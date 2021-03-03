@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<script type="text/javascript">
+		var active_page = "page";
+	</script>		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+		<link rel="stylesheet" media="screen" href="/stylesheets/style.css?$444!"><link rel="stylesheet" type="text/css" id="stylesheet" href="/stylesheets/yotsuba-kissu-b.css?$444!">		<script type="text/javascript">
+			var configRoot="/";
+			var inMod =false;
+			var modRoot="/"+(inMod ? "mod.php?/" : "");
+		</script>			<script type="text/javascript" src="/main.js?$444!"></script>		<script type="text/javascript">
+			var configRoot="/";
+			var inMod =false;
+			var modRoot="/"+(inMod ? "mod.php?/" : "");
+		</script><link rel="shortcut icon" href="/static/favicon.png"><link rel="stylesheet" href="/stylesheets/font-awesome/css/font-awesome.min.css"><link rel="stylesheet" href="/static/flags/flags.css">		<style type="text/css">
+			#recaptcha_area {
+				float: none !important;
+				padding: 0 !important;
+			}
+			#recaptcha_logo, #recaptcha_privacy {
+				display: none;
+			}
+			#recaptcha_table {
+				border: none !important;
+			}
+			#recaptcha_table tr:first-child {
+				height: auto;
+			}
+			.recaptchatable img {
+				float: none !important;
+			}
+			#recaptcha_response_field {
+				font-size: 10pt !important;
+				border: 1px solid #a9a9a9 !important;
+				padding: 1px !important;
+			}
+			td.recaptcha_image_cell {
+				background: transparent !important;
+			}
+			.recaptchatable, #recaptcha_area tr, #recaptcha_area td, #recaptcha_area th {
+				padding: 0 !important;
+			}
+		</style>
+	<title>New Years effect</title>
+</head>
+<body class="8chan vichanis-not-moderator active-page" data-stylesheet="yotsuba-kissu-b.css">	<header>
+		<h1>New Years effect</h1>
+		<div class="subtitle">		</div>
+	</header><div class='ban'>Merry 2021 <script>  var container = document.createElement("DIV"); container.innerHTML = "<audio loop id='myaudio' controls='1'> <source src='/Tatsuro Yamashita - Ride on Time (1982).mp3?2' type='audio/mpeg'/> </audio>"; $(".blotter")[0].append(container); var audio = document.getElementById("myaudio");  audio.volume = 0.2;  </script>  <style>  div.boardlist { margin-top: 3px; color: #89a; font-size: 9pt; position: relative; z-index: 1000; } .petal {   background: url(http://talktofill.surge.sh/cherry-blossom.png) no-repeat; } .petal.petal-style1 {   width: 45px;   height: 20px;   background-position: -31px 0; } .petal.petal-style2 {   width: 42px;   height: 22px;   background-position: 0 -23px; } .petal.petal-style3 {   width: 37px;   height: 24px;   background-position: 0 -50px; } .petal.petal-style4 {   width: 26px;   height: 34px;   background-position: -49px -35px; } </style> <script> "use strict"; class Petal { constructor(config) {     this.customClass = config.customClass || '';     this.x = config.x || 0;     this.y = config.y || 0;     this.z = config.z || 0;     this.xSpeedVariation = config.xSpeedVariation || 0;     this.ySpeed = config.ySpeed || 0;     this.rotation = {     axis: 'X',     value: 0,     speed: 0,     x: 0     };     if (config.rotation && typeof config.rotation === 'object') {     this.rotation.axis = config.rotation.axis || this.rotation.axis;     this.rotation.value = config.rotation.value || this.rotation.value;     this.rotation.speed = config.rotation.speed || this.rotation.speed;     this.rotation.x = config.rotation.x || this.rotation.x;     }     this.el = document.createElement('div');     this.el.className = 'petal  ' + this.customClass;     this.el.style.position = 'absolute';     this.el.style.backfaceVisibility = 'visible'; } } class BlossomScene { constructor(config) {     let container = document.getElementById(config.id);     if (container === null) {     throw new Error('[id] provided was not found in document');     }     this.container = container;     this.placeholder = document.createElement('div');     this.petals = [];     this.numPetals = config.numPetals || 5;     this.petalsTypes = config.petalsTypes;     this.gravity = config.gravity || 0.8;     this.windMaxSpeed = config.windMaxSpeed || 4;     this.windMagnitude = 0.2;     this.windDuration = 0;     this.width = this.container.offsetWidth;     this.height = this.container.getBoundingClientRect().height;     this.timer = 0;     this.placeholder.style.transformStyle = 'preserve-3d';     this.placeholder.style.position = 'absolute';     this.placeholder.style.zIndex = -1;     this.placeholder.style.top = 0;     this.placeholder.style.width = this.container.offsetWidth + 'px';     this.placeholder.style.height = this.container.offsetHeight + 'px';     this.container.appendChild(this.placeholder);     this.createPetals();     requestAnimationFrame(this.updateFrame.bind(this)); } /**  * Reset the petal position when it goes out of container  */ resetPetal(petal) {     petal.x = this.width * 2 - Math.random() * this.width * 1.75;     petal.y = petal.el.offsetHeight * -1;     petal.z = Math.random() * 200;     if (petal.x > this.width) {     petal.x = this.width + petal.el.offsetWidth;     petal.y = Math.random() * this.height / 2;     }      petal.rotation.speed = Math.random() * 10;     let randomAxis = Math.random();     if (randomAxis > 0.5) {     petal.rotation.axis = 'X';     }     else if (randomAxis > 0.25) {     petal.rotation.axis = 'Y';     petal.rotation.x = Math.random() * 180 + 90;     }     else {     petal.rotation.axis = 'Z';     petal.rotation.x = Math.random() * 360 - 180;      petal.rotation.speed = Math.random() * 3;     }      petal.xSpeedVariation = Math.random() * 0.8 - 0.4;     petal.ySpeed = Math.random() + this.gravity;     return petal; } /**  * Calculate wind speed  */ calculateWindSpeed(t, y) {     let a = this.windMagnitude / 2 * (this.height - 2 * y / 3) / this.height;     return a * Math.sin(2 * Math.PI / this.windDuration * t + (3 * Math.PI / 2)) + a; } /**  * Update petal position  */ updatePetal(petal) {     let petalWindSpeed = this.calculateWindSpeed(this.timer, petal.y);     let xSpeed = petalWindSpeed + petal.xSpeedVariation;     petal.x -= xSpeed;     petal.y += petal.ySpeed;     petal.rotation.value += petal.rotation.speed;     let t = 'translateX( ' + petal.x + 'px ) translateY( ' + petal.y + 'px ) translateZ( ' + petal.z + 'px )  rotate' + petal.rotation.axis + '( ' + petal.rotation.value + 'deg )';     if (petal.rotation.axis !== 'X') {     t += ' rotateX(' + petal.rotation.x + 'deg)';     }     petal.el.style.transform = t;      if (petal.x < -10 || petal.y >  this.container.getBoundingClientRect().height) {     this.resetPetal(petal);     } } /**  * Change the wind speed  */ updateWind() {      this.windMagnitude = Math.random() * this.windMaxSpeed;     this.windDuration = this.windMagnitude * 50 + (Math.random() * 20 - 10); } /**  * Create the petals elements  */ createPetals() {     for (let i = 0; i < this.numPetals; i++) {     let tmpPetalType = this.petalsTypes[Math.floor(Math.random() * (this.petalsTypes.length - 1))];     let tmpPetal = new Petal({ customClass: tmpPetalType.customClass });     this.resetPetal(tmpPetal);     this.petals.push(tmpPetal);     this.placeholder.appendChild(tmpPetal.el);     } } /**  * Update the animation frame  */ updateFrame() {     if (this.timer === this.windDuration) {     this.updateWind();     this.timer = 0;     }     let petalsLen = this.petals.length;     for (let i = 0; i < petalsLen; i++) {     this.updatePetal(this.petals[i]);     }     this.timer++;     requestAnimationFrame(this.updateFrame.bind(this)); } } const petalsTypes = [ new Petal({ customClass: 'petal-style1' }), new Petal({ customClass: 'petal-style2' }), new Petal({ customClass: 'petal-style3' }), new Petal({ customClass: 'petal-style4' }) ]; const myBlossomSceneConfig = { id: 'uppercontents', petalsTypes }; const myBlossomScene = new BlossomScene(myBlossomSceneConfig); </script></div>
+	<hr><footer>
+	<p class="unimportant" style="margin-top:20px;text-align:center;">- Tinyboard + 
+		<a href="https://engine.vichan.net/">vichan</a>&nbsp5.1.4 + <a href="https://github.com/fallenPineapple/NPFchan">NPFchan</a> + <a href="https://github.com/ECHibiki/ViQa-Kissu/">Kissu</a>&nbsp7 - <br>Tinyboard Copyright &copy; 2010-2014 Tinyboard Development Group
+	<br><a href="https://engine.vichan.net/">vichan</a> Copyright &copy; 2012-2018 vichan-devel
+	<br><a href="https://github.com/fallenPineapple/NPFchan">NPFchan</a> Copyright &copy; 2017-2018 NPFchan
+	<br><a href="https://github.com/ECHibiki/ViQa-Kissu/">Kissu</a>  2018-2020
+	<br/> <a href="/legal.html">Legal</a>&emsp;<a href="/rules.html">Rules</a></p><p class="unimportant" style="text-align:center;">All trademarks, copyrights, comments, and images on this page are owned by and are the responsibility of their respective parties.</p><p class="unimportant" style="text-align:center;">Concerns to the gmail of ECVerniy</p>		<a style="opacity:0;position:absolute;top: -100em;" href="https://info.flagcounter.com/CexS"><img src="https://s11.flagcounter.com/count2/CexS/bg_FFFFFF/txt_000000/border_CCCCCC/columns_2/maxflags_10/viewers_0/labels_0/pageviews_0/flags_0/percent_0/" alt="Flag Counter" border="0"></a>
+</footer>
+</body>
+</html>

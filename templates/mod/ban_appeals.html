@@ -2,7 +2,11 @@
 
 <form action="" method="post" style="margin: 10px 0">
 	<input type="hidden" name="token" value="{{ token }}">
+	{% if ban.is_spam %}
+	<strong style="color:red">This message has been marked as spam</strong>
+	{% endif %}
 	<table style="margin: 5px 0">
+
 		<tr>
 			<th>{% trans 'Status' %}</th>
 			<td>
@@ -82,20 +86,26 @@
 		</tr>
 		<tr>
 			<th>{% trans 'Appeal reason' %}</th>
-			<td>{{ ban.message|e }}</td>
+			<td>{{ ban.message|nl2br }}</td>
 		</tr>
 		{% if mod|hasPermission(config.mod.ban_appeals, board.uri) %}
 			<tr>
 				<th>{% trans 'Action' %}</th>
 				<td>
 					<input type="hidden" name="appeal_id" value="{{ ban.id }}">
-					<input type="submit" name="unban" value="Unban"> 
-					<input type="submit" name="deny" value="Deny appeal">
+					<input type="submit" name="unban" value="Unban IP+Subnet">
+					<input type="submit" name="hole" value="Add Whitelist Item">
+					{% if config.last_resort_register_ips %}
+					<input type="submit" name="whitelist-register" value="Whitelist Subnet(register IP range)">
+					{% endif %}
+					<input type="submit" name="deny" value="Deny Appeal">
 				</td>
 			</tr>
+			<tr><th>{% trans 'Whitelist Pattern<br/>(Required on Whitelist)' %}</th><td><input type="text" name="wl-pattern" placeholder="Negates Bans Of Regex Pattern"/></td></tr>
+			<tr><th>{% trans 'Denial Reason<br/>(Optional on Deny)' %}</th><td><textarea name="deny-reason" rows="8" placeholder="Add additional message that will be showed to the denied poster"></textarea></td></tr>
 		{% endif %}
 	</table>
-	
+
 	{% if ban.post %}
 		<div style="">
 			{{ ban.post.build(true) }}

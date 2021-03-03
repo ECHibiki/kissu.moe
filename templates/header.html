@@ -1,23 +1,36 @@
-		<link rel="stylesheet" media="screen" href="{{ config.url_stylesheet }}">
-		{% if config.url_favicon %}<link rel="shortcut icon" href="{{ config.url_favicon }}">{% endif %}
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
-		{% if config.meta_keywords %}<meta name="keywords" content="{{ config.meta_keywords }}">{% endif %}
-		{% if config.default_stylesheet.1 != '' %}<link rel="stylesheet" type="text/css" id="stylesheet" href="{{ config.uri_stylesheets }}{{ config.default_stylesheet.1 }}">{% endif %}
-		{% if config.font_awesome %}<link rel="stylesheet" href="{{ config.root }}{{ config.font_awesome_css }}">{% endif %}
-		{% if config.country_flags_condensed %}<link rel="stylesheet" href="{{ config.root }}{{ config.country_flags_condensed_css }}">{% endif %}
+		{%if config.nerf_mods_board == board.uri %}<meta name="robots" content="noindex"> {% endif %}
+
+		<link rel="stylesheet" media="screen" href="{{ config.url_stylesheet }}?0096">
+		{% if config.default_stylesheet.1 != '' %}<link rel="stylesheet" type="text/css" id="stylesheet" href="{{ config.uri_stylesheets }}{{ config.default_stylesheet.1 }}?0096">{% endif %}
+{% if config.js_ui %}
+			<script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+			<script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>		<script src="/js-ui/ui-bundle.js" type="text/javascript"></script>
+		{% endif %}
 		<script type="text/javascript">
 			var configRoot="{{ config.root }}";
 			var inMod = {% if mod %}true{% else %}false{% endif %};
 			var modRoot="{{ config.root }}"+(inMod ? "mod.php?/" : "");
 		</script>
 		{% if not nojavascript %}
-			<script type="text/javascript" src="{{ config.url_javascript }}"></script>
+			<script type="text/javascript" src="{{ config.url_javascript }}?0096"></script>
 			{% if not config.additional_javascript_compile %}
-			{% for javascript in config.additional_javascript %}<script type="text/javascript" src="{{ config.additional_javascript_url }}{{ javascript }}"></script>{% endfor %}
+			{% for javascript in config.additional_javascript %}<script type="text/javascript" src="{{ config.additional_javascript_url }}{{ javascript }}?0096"></script>{% endfor %}
 			{% endif %}
 		{% endif %}
-		{% if config.recaptcha %}<script src="//www.google.com/recaptcha/api.js"></script>
+		<script type="text/javascript">
+			var configRoot="{{ config.root }}";
+			var inMod = {% if mod %}true{% else %}false{% endif %};
+			var modRoot="{{ config.root }}"+(inMod ? "mod.php?/" : "");
+		</script>
+
+		{% if config.poll_board %}<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>{% endif %}
+		{% if config.recaptcha %}<script src="//www.google.com/recaptcha/api.js"></script>{% endif %}
+		{% if config.url_favicon %}<link rel="shortcut icon" href="{{ config.url_favicon }}">{% endif %}
+		{% if config.meta_keywords %}<meta name="keywords" content="{{ config.meta_keywords }}">{% endif %}
+		{% if config.font_awesome %}<link rel="stylesheet" href="/{{config.font_awesome_css}}">{% endif %}
+		{% if config.country_flags_condensed %}<link rel="stylesheet" href="{{ config.root }}{{ config.country_flags_condensed_css }}">{% endif %}
 		<style type="text/css">{% raw %}
 			#recaptcha_area {
 				float: none !important;
@@ -46,4 +59,4 @@
 			.recaptchatable, #recaptcha_area tr, #recaptcha_area td, #recaptcha_area th {
 				padding: 0 !important;
 			}
-		{% endraw %}</style>{% endif %}
+		{% endraw %}</style>

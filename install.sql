@@ -85,6 +85,7 @@ INSERT INTO `boards` VALUES
 CREATE TABLE IF NOT EXISTS `cites` (
   `board` varchar(58) NOT NULL,
   `post` int(11) NOT NULL,
+  `host`  int(11) NOT NULL,
   `target_board` varchar(58) NOT NULL,
   `target` int(11) NOT NULL,
   KEY `target` (`target_board`,`target`),
@@ -293,6 +294,7 @@ CREATE TABLE IF NOT EXISTS `ban_appeals` (
   `time` int(10) unsigned NOT NULL,
   `message` text NOT NULL,
   `denied` tinyint(1) NOT NULL,
+  `is_spam` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `ban_id` (`ban_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1 ;
@@ -350,4 +352,3 @@ CREATE TABLE IF NOT EXISTS `captchas` (
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-

@@ -1,15 +1,15 @@
-#banlist {
+#banlist, #whitelist {
   clear: left;
 }
-#banlist th {
+#banlist th, #whitelist th {
   text-align: center;
 }
-#banlist th, #banlist td {
+#banlist th, #banlist td, #whitelist th, #whitelist td {
   margin: 2px;
   padding: 2px;
   overflow: hidden;
 }
-#banlist td:hover {
+#banlist td:hover, #whitelist td:hover {
   overflow: visible;
   height: auto !important;
   background-color: white;
@@ -18,21 +18,21 @@
   border: 1px solid black;
   padding: 1px;
 }
-.banlist-opts {
+.banlist-opts, .whitelist-opts {
 }
-.banlist-opts .checkboxes {
+.banlist-opts .checkboxes, .whitelist-opts .checkboxes {
   float: left;
   width: 50%;
 }
-.banlist-opts .checkboxes label {
+.banlist-opts .checkboxes label, .whitelist-opts .checkboxes label {
   display: block;
   color: black;
 }
-.banlist-opts .buttons {
+.banlist-opts .buttons, .whitelist-opts .buttons {
   float: left;
   width: 50%;
 }
-.banlist-opts .buttons * {
+.banlist-opts .buttons *, .banlist-opts .buttons * {
   display: inline-block;
   width: 49%;
   font-size: 18pt;

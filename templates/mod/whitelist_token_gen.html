@@ -1,0 +1,8 @@
+<fieldset>
+  <legend>Actions</legend>
+  <form action="?/alter-wl-token" method="POST">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="text" placeholder="token-owner" name="owner"/> <input type="submit" value="Create New Token" name="create" /><br/>
+    <input type="text" placeholder="token-code" name="revoke-code"/> <input type="submit" value="Revoke Token" name="revoke" />
+  </form>
+</fieldset>

@@ -32,6 +32,7 @@ class Api {
 			'images' => 'images',
 			'sticky' => 'sticky',
 			'locked' => 'locked',
+			'sage' => 'sage',
 			'cycle' => 'cyclical',
 			'bump' => 'last_modified',
 			'embed' => 'embed',
@@ -70,14 +71,16 @@ class Api {
 		'images' => 1,
 		'sticky' => 1,
 		'locked' => 1,
-		'last_modified' => 1
+		'cyclical' => 1,
+		'sage' => 1,
+		'bumplocked' => 1,
+		'last_modified' => 1,
 	);
 
 	private function translateFields($fields, $object, &$apiPost) {
 		foreach ($fields as $local => $translated) {
 			if (!isset($object->$local))
 				continue;
-
 			$toInt = isset(self::$ints[$translated]);
 			$val = $object->$local;
 			if ($val !== null && $val !== '') {
@@ -88,16 +91,23 @@ class Api {
 	}
 
 	private function translateFile($file, $post, &$apiPost) {
+		if($file->file == "deleted" || !isset($file->thumb)){
+			$apiPost['filedeleted'] = 1;
+			return;
+		}
+		else if($file->thumb == "spoiler"){
+			$apiPost['spoiler'] = 1;
+		}
 		$this->translateFields($this->fileFields, $file, $apiPost);
 		$apiPost['filename'] = @substr($file->name, 0, strrpos($file->name, '.'));
 		$dotPos = strrpos($file->file, '.');
 		$apiPost['ext'] = substr($file->file, $dotPos);
 		$apiPost['tim'] = substr($file->file, 0, $dotPos);
 		if (isset ($file->hash) && $file->hash) {
-			$apiPost['md5'] = base64_encode(hex2bin($file->hash));
+			$apiPost['md5'] = base64_encode(($file->hash));
 		}
 		else if (isset ($post->filehash) && $post->filehash) {
-			$apiPost['md5'] = base64_encode(hex2bin($post->filehash));
+			$apiPost['md5'] = base64_encode(($post->filehash));
 		}
 	}
 
@@ -135,7 +145,7 @@ class Api {
 				$extra_files = array();
 				foreach ($post->files as $i => $f) {
 					if ($i == 0) continue;
-				
+
 					$extra_file = array();
 					$this->translateFile($f, $post, $extra_file);
 
@@ -144,27 +154,86 @@ class Api {
 				$apiPost['extra_files'] = $extra_files;
 			}
 		}
-
 		return $apiPost;
 	}
 
+	function translateArchive($arch_arr){
+		$li = array();
+		for($i = 0 ; $i < sizeof($arch_arr) ; $i++){
+			$li[$i] = intval($arch_arr[$i]["id"]);
+		}
+		return $li;
+	}
+
 	function translateThread(Thread $thread, $threadsPage = false) {
+		global $config;
 		$apiPosts = array();
 		$op = $this->translatePost($thread, $threadsPage);
+		$op_limits_checked = false;
+		if(isset($op["replies"] )){
+			$op_limits_checked = true;
+			$op["bumplimit"] = $op["replies"] > $config["reply_limit"] && $config["reply_limit"] != 0 ? 1 : 0;
+		}
+		if(isset($op["images"] )){
+			$op["imagelimit"] = $op["images"] > $config["image_hard_limit"] && $config["image_hard_limit"] != 0 ? 1 : 0;
+			$op_limits_checked = true;
+		}
+		if(!$op_limits_checked && !$threadsPage){
+			$post_count = $image_count = 0;
+			foreach ($thread->posts as $p) {
+				$post_count++;
+				if (isset($p->files))
+					$image_count++;
+			}
+			$op["bumplimit"] = $config["reply_limit"] != 0 && $post_count > $config["reply_limit"] ? 1 : 0;
+			$op["imagelimit"] = $config["image_hard_limit"] != 0 && $image_count > $config["image_hard_limit"] ? 1 : 0;
+		}
+
+
 		if (!$threadsPage) $op['resto'] = 0;
 		$apiPosts['posts'][] = $op;
+
 
 		foreach ($thread->posts as $p) {
 			$apiPosts['posts'][] = $this->translatePost($p, $threadsPage);
 		}
-
 		return $apiPosts;
+	}
+
+	function translateProperties(){
+	    global $board, $config;
+
+	    $api_properties['board'] = $board['uri'];
+	    $api_properties['title'] = $board['title'];
+	    $api_properties['subtitle'] = $board['subtitle'];
+	    $api_properties['blotter'] = $config['blotter'];
+	    $api_properties['max_pages'] = $config['max_pages'];
+	    $api_properties['threads_per_page'] = $config['threads_per_page'];
+	    $api_properties['nsfw_board'] = $config['nsfw_board'];
+	    $api_properties['poll_board'] = $config['poll_board'];
+	    $api_properties['file_board'] = $config['file_board'];
+	    $api_properties['max_filesize'] = intval($config['max_filesize'] / (1024 * 1024)) . " MB";
+	    $api_properties['max_body'] = $config['max_body'];
+	    $api_properties['reply_limit'] = $config['reply_limit'];
+	    $api_properties['image_hard_limit'] = $config['image_hard_limit'];
+	    $api_properties['flood_time'] = $config['flood_time'];
+	    $api_properties['flood_time_ip'] = $config['flood_time_ip'];
+	    $api_properties['flood_board_time'] = $config['flood_board_time'];
+	    $api_properties['archive']['threads'] = $config['archive']['threads'];
+	    $api_properties['archive']['lifetime'] = $config['archive']['lifetime'];
+
+	    return $api_properties;
+	}
+
+	function translateCounts($recent_no, $sage_count, $file_count){
+            $api_counter = array("recent_post"=>$recent_no, "sage_count"=>$sage_count,  "file_count"=>$file_count);
+            return $api_counter;
 	}
 
 	function translatePage(array $threads) {
 		$apiPage = array();
 		foreach ($threads as $thread) {
-			$apiPage['threads'][] = $this->translateThread($thread);
+			$apiPage['threads'][] = $this->translateThread($thread, false);
 		}
 		return $apiPage;
 	}
@@ -173,7 +242,10 @@ class Api {
 		$apiPage = array();
 		foreach ($threads as $thread) {
 			$ts = $this->translateThread($thread, $threadsPage);
-			$apiPage['threads'][] = current($ts['posts']);
+			$first = array_shift($ts["posts"]);
+			if(!$threadsPage)
+				$first["last_replies"] = $ts["posts"];
+			$apiPage['threads'][] = $first;
 		}
 		return $apiPage;
 	}

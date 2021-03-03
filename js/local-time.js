@@ -9,7 +9,7 @@
  * Usage:
  *   // $config['additional_javascript'][] = 'js/jquery.min.js';
  *   // $config['additional_javascript'][] = 'js/strftime.min.js';
- *   $config['additional_javascript'][] = 'js/local-time.js';
+ *   $config['additional_javascript'][] = 'js/local-time.js'; 
  *
  */
 
@@ -29,7 +29,7 @@ $(document).ready(function(){
 
 	var dateformat = (typeof strftime === 'undefined') ? function(t) {
 		return zeropad(t.getMonth() + 1, 2) + "/" + zeropad(t.getDate(), 2) + "/" + t.getFullYear().toString().substring(2) +
-				" (" + [_("Sun"), _("Mon"), _("Tue"), _("Wed"), _("Thu"), _("Fri"), _("Sat"), _("Sun")][t.getDay()]  + ") " +
+				"(" + [_("Sun"), _("Mon"), _("Tue"), _("Wed"), _("Thu"), _("Fri"), _("Sat"), _("Sun")][t.getDay()]  + ")" +
 				// time
 				zeropad(t.getHours(), 2) + ":" + zeropad(t.getMinutes(), 2) + ":" + zeropad(t.getSeconds(), 2);
 
@@ -37,6 +37,7 @@ $(document).ready(function(){
 		// post_date is defined in templates/main.js
 		return strftime(window.post_date, t, datelocale);
 	};
+	
 
 	function timeDifference(current, previous) {
 
@@ -73,12 +74,13 @@ $(document).ready(function(){
 
 			times[i].setAttribute('data-local', 'true');
 
-			if (localStorage.show_relative_time === 'false') {
-				times[i].innerHTML = dateformat(iso8601(t));
-				times[i].setAttribute('title', timeDifference(currentTime, postTime.getTime()));
-			} else {
+			if (localStorage.show_relative_time === 'true') {
 				times[i].innerHTML = timeDifference(currentTime, postTime.getTime());
 				times[i].setAttribute('title', dateformat(iso8601(t)));
+
+			} else {
+				times[i].innerHTML = dateformat(iso8601(t));
+				times[i].setAttribute('title', timeDifference(currentTime, postTime.getTime()));
 			}
 		
 		}
@@ -89,7 +91,7 @@ $(document).ready(function(){
 		Options.extend_tab('general', '<label id="show-relative-time"><input type="checkbox">' + _('Show relative time') + '</label>');
 
 		$('#show-relative-time>input').on('change', function() {
-			if (localStorage.show_relative_time !== 'false') {
+			if (localStorage.show_relative_time === 'true') {
 				localStorage.show_relative_time = 'false';
 				clearInterval(interval_id);
 			} else {
@@ -100,7 +102,7 @@ $(document).ready(function(){
 			do_localtime(document);
 		});
 
-		if (localStorage.show_relative_time !== 'false') {
+		if (localStorage.show_relative_time === 'true') {
 			$('#show-relative-time>input').attr('checked','checked');
 			interval_id = setInterval(do_localtime, 30000, document);
 		}

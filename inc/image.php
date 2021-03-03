@@ -10,7 +10,7 @@ class Image {
 	public $src, $format, $image, $size;
 	public function __construct($src, $format = false, $size = false) {
 		global $config;
-		
+
 		$this->src = $src;
 		$this->format = $format;
 
@@ -24,21 +24,21 @@ class Image {
 				error(_('Unsupported file format: ') . $this->format);
 			}
 		}
-		
+
 		$this->image = new $classname($this, $size);
 
 		if (!$this->image->valid()) {
 			$this->delete();
 			error($config['error']['invalidimg']);
 		}
-		
+
 		$this->size = (object)array('width' => $this->image->_width(), 'height' => $this->image->_height());
 		if ($this->size->width < 1 || $this->size->height < 1) {
 			$this->delete();
 			error($config['error']['invalidimg']);
 		}
 	}
-	
+
 	public function resize($extension, $max_width, $max_height) {
 		global $config;
 
@@ -62,16 +62,16 @@ class Image {
 				error(_('Unsupported file format: ') . $extension);
 			}
 		}
-		
+
 		$thumb = new $classname(false);
 		$thumb->src = $this->src;
 		$thumb->format = $this->format;
 		$thumb->original_width = $this->size->width;
 		$thumb->original_height = $this->size->height;
-		
+
 		$x_ratio = $max_width / $this->size->width;
 		$y_ratio = $max_height / $this->size->height;
-		
+
 		if (($this->size->width <= $max_width) && ($this->size->height <= $max_height)) {
 			$width = $this->size->width;
 			$height = $this->size->height;
@@ -82,16 +82,16 @@ class Image {
 			$width = ceil($y_ratio * $this->size->width);
 			$height = $max_height;
 		}
-		
+
 		$thumb->_resize($this->image->image, $width, $height);
-				
+
 		return $thumb;
 	}
-	
+
 	public function to($dst) {
 		$this->image->to($dst);
 	}
-	
+
 	public function delete() {
 		file_unlink($this->src);
 	}
@@ -114,26 +114,26 @@ class ImageGD {
 }
 
 class ImageBase extends ImageGD {
-	public $image, $src, $original, $original_width, $original_height, $width, $height;		
+	public $image, $src, $original, $original_width, $original_height, $width, $height;
 	public function valid() {
 		return (bool)$this->image;
 	}
-	
+
 	public function __construct($img, $size = false) {
 		if (method_exists($this, 'init'))
 			$this->init();
-		
+
 		if ($size && $size[0] > 0 && $size[1] > 0) {
 			$this->width = $size[0];
 			$this->height = $size[1];
 		}
-		
+
 		if ($img !== false) {
 			$this->src = $img->src;
 			$this->from();
 		}
 	}
-	
+
 	public function _width() {
 		if (method_exists($this, 'width'))
 			return $this->width();
@@ -156,7 +156,7 @@ class ImageBase extends ImageGD {
 		$this->original = &$original;
 		$this->width = $width;
 		$this->height = $height;
-		
+
 		if (method_exists($this, 'resize'))
 			$this->resize();
 		else
@@ -199,31 +199,31 @@ class ImageImagick extends ImageBase {
 	}
 	public function resize() {
 		global $config;
-		
+
 		if ($this->format == 'gif' && ($config['thumb_ext'] == 'gif' || $config['thumb_ext'] == '')) {
 			$this->image = new Imagick();
 			$this->image->setFormat('gif');
-			
+
 			$keep_frames = array();
 			for ($i = 0; $i < $this->original->getNumberImages(); $i += floor($this->original->getNumberImages() / $config['thumb_keep_animation_frames']))
 				$keep_frames[] = $i;
-			
+
 			$i = 0;
 			$delay = 0;
 			foreach ($this->original as $frame) {
 				$delay += $frame->getImageDelay();
-				
+
 				if (in_array($i, $keep_frames)) {
 					// $frame->scaleImage($this->width, $this->height, false);
 					$frame->sampleImage($this->width, $this->height);
 					$frame->setImagePage($this->width, $this->height, 0, 0);
 					$frame->setImageDelay($delay);
 					$delay = 0;
-					
+
 					$this->image->addImage($frame->getImage());
 				}
 				$i++;
-			}		
+			}
 		} else {
 			$this->image = clone $this->original;
 			$this->image->scaleImage($this->width, $this->height, false);
@@ -234,15 +234,15 @@ class ImageImagick extends ImageBase {
 
 class ImageConvert extends ImageBase {
 	public $width, $height, $temp, $gm = false, $gifsicle = false;
-	
+
 	public function init() {
 		global $config;
-		
+
 		if ($config['thumb_method'] == 'gm' || $config['thumb_method'] == 'gm+gifsicle')
 			$this->gm = true;
 		if ($config['thumb_method'] == 'convert+gifsicle' || $config['thumb_method'] == 'gm+gifsicle')
 			$this->gifsicle = true;
-		
+
 		$this->temp = false;
 	}
 	public function get_size($src, $try_gd_first = true) {
@@ -264,7 +264,7 @@ class ImageConvert extends ImageBase {
 		if ($size) {
 			$this->width = $size[0];
 			$this->height = $size[1];
-			
+
 			$this->image = true;
 		} else {
 			// mark as invalid
@@ -273,7 +273,7 @@ class ImageConvert extends ImageBase {
 	}
 	public function to($src) {
 		global $config;
-		
+
 		if (!$this->temp) {
 			if ($config['strip_exif']) {
 				if($error = shell_exec_error(($this->gm ? 'gm ' : '') . 'convert ' .
@@ -305,23 +305,23 @@ class ImageConvert extends ImageBase {
 	}
 	public function resize() {
 		global $config;
-		
+
 		if ($this->temp) {
 			// remove old
 			$this->destroy();
 		}
-		
+
 		$this->temp = tempnam($config['tmp'], 'convert');
-				
+
 		$config['thumb_keep_animation_frames'] = (int)$config['thumb_keep_animation_frames'];
-		
+
 		if ($this->format == 'gif' && ($config['thumb_ext'] == 'gif' || $config['thumb_ext'] == '') && $config['thumb_keep_animation_frames'] > 1) {
 			if ($this->gifsicle) {
 				if (($error = shell_exec("gifsicle -w --unoptimize -O2 --resize {$this->width}x{$this->height} < " .
 						escapeshellarg($this->src . '') . " \"#0-{$config['thumb_keep_animation_frames']}\" -o " .
 						escapeshellarg($this->temp))) || !file_exists($this->temp)) {
 					$this->destroy();
-					error(_('Failed to resize image!'), null, $error);
+					error(_('Failed to resize image!A'), null, $error);
 				}
 			} else {
 				if ($config['convert_manual_orient'] && ($this->format == 'jpg' || $this->format == 'jpeg'))
@@ -340,7 +340,7 @@ class ImageConvert extends ImageBase {
 						$this->height,
 						escapeshellarg($this->temp)))) || !file_exists($this->temp)) {
 					$this->destroy();
-					error(_('Failed to resize image!'), null, $error);
+					error(_('Failed to resize image!B'), null, $error);
 				}
 				if ($size = $this->get_size($this->temp)) {
 					$this->width = $size[0];
@@ -354,6 +354,7 @@ class ImageConvert extends ImageBase {
 				$convert_args = str_replace('-auto-orient', '', $config['convert_args']);
 			else
 				$convert_args = &$config['convert_args'];
+
 			if (($error = shell_exec_error(($this->gm ? 'gm ' : '') . 'convert ' .
 				sprintf($convert_args,
 					$this->width,
@@ -363,14 +364,24 @@ class ImageConvert extends ImageBase {
 					$this->height,
 					escapeshellarg($this->temp)))) || !file_exists($this->temp)) {
 
-					if (strpos($error, "known incorrect sRGB profile") === false &&
-                                            strpos($error, "iCCP: Not recognizing known sRGB profile that has been edited") === false) {
-						$this->destroy();
-						error(_('Failed to resize image!')." "._('Details: ').nl2br(htmlspecialchars($error)), null, array('convert_error' => $error));
+					//known benign errors(aka warnings)
+					$benign_errors = ["cHRM chunk does not match sRGB", "extra compressed data"];
+					$escape = false;
+					foreach($benign_errors as $b_error){
+						if(preg_match("/$b_error/", $error)){
+							$escape = true;
+						}
 					}
-					if (!file_exists($this->temp)) {
-						$this->destroy();
-						error(_('Failed to resize image!'), null, $error);
+					if(!$escape){
+						if (strpos($error, "known incorrect sRGB profile") === false &&
+												strpos($error, "iCCP: Not recognizing known sRGB profile that has been edited") === false) {
+							$this->destroy();
+							error(_('Failed to resize image!C')." "._('Details: ').nl2br(htmlspecialchars($error)), null, array('convert_error' => $error));
+						}
+						if (!file_exists($this->temp)) {
+							$this->destroy();
+							error(_('Failed to resize image!D'), null, $error);
+						}
 					}
 			}
 			if ($size = $this->get_size($this->temp)) {
@@ -379,7 +390,7 @@ class ImageConvert extends ImageBase {
 			}
 		}
 	}
-	
+
 	// For when -auto-orient doesn't exist (older versions)
 	static public function jpeg_exif_orientation($src, $exif = false) {
 		if (!$exif) {
@@ -397,16 +408,16 @@ class ImageConvert extends ImageBase {
 				//   8888
 				//     88
 				//     88
-			
+
 				return '-flop';
 			case 3:
-			
+
 				//     88
 				//     88
 				//   8888
 				//     88
 				// 888888
-			
+
 				return '-flip -flop';
 			case 4:
 				// 88
@@ -414,31 +425,31 @@ class ImageConvert extends ImageBase {
 				// 8888
 				// 88
 				// 888888
-			
+
 				return '-flip';
 			case 5:
 				// 8888888888
 				// 88  88
 				// 88
-			
+
 				return '-rotate 90 -flop';
 			case 6:
 				// 88
 				// 88  88
 				// 8888888888
-			
+
 				return '-rotate 90';
 			case 7:
 				//         88
 				//     88  88
 				// 8888888888
-			
+
 				return '-rotate "-90" -flop';
 			case 8:
 				// 8888888888
 				//     88  88
 				//         88
-			
+
 				return '-rotate "-90"';
 		}
 	}
@@ -496,6 +507,291 @@ class ImageBMP extends ImageBase {
 	}
 }
 
+class Post_ImageProcessing{
+
+	static public function createThumbnail($file_obj, $op){
+		global $config, $board;
+		require_once 'inc/image.php';
+		// create image object
+
+		// find dimensions of an image using GD
+		if (!$size = @getimagesize($file_obj->file_path)) {
+			error($config['error']['invalidimg']);
+		}
+		if (!in_array($size[2], array(IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_JPEG, IMAGETYPE_BMP, IMAGETYPE_WEBP))) {
+			error($config['error']['invalidimg']);
+		}
+		if ($size[0] > $config['max_width'] || $size[1] > $config['max_height']) {
+			error($config['error']['maxsize']);
+		}
+
+		$image = new Image($file_obj->file_path, $file_obj->extension, $size);
+		if ($image->size->width > $config['max_width'] || $image->size->height > $config['max_height']) {
+			$image->delete();
+			error($config['error']['maxsize']);
+		}
+
+		$file_obj->thumb_path = $board['dir'] . $config['dir']['thumb'] . $file_obj->file_id . '.' . ($config['thumb_ext'] ? $config['thumb_ext'] : $file_obj->extension);
+		$file_obj->thumb = $file_obj->file_id . '.' . ($config['thumb_ext'] ? $config['thumb_ext'] : $file_obj->extension);
+
+		if ($config['minimum_copy_resize'] &&
+			$image->size->width <= $config['thumb_width'] &&
+			$image->size->height <= $config['thumb_height'] &&
+			$file_obj->extension == ($config['thumb_ext'] ? $config['thumb_ext'] : $file_obj->extension)) {
+
+			// Copy, because there's nothing to resize
+			copy($file_obj->file_path, $file_obj->thumb);
+
+			$file_obj->thumbwidth = $image->size->width;
+			$file_obj->thumbheight = $image->size->height;
+		} else {
+			$thumb = $image->resize(
+				$config['thumb_ext'] ? $config['thumb_ext'] : $file_obj->extension,
+				$op ? $config['thumb_op_width'] : $config['thumb_width'],
+				$op ? $config['thumb_op_height'] : $config['thumb_height']
+			);
+			$thumb->to($file_obj->thumb_path);
+
+			$file_obj->thumbwidth = $thumb->width;
+			$file_obj->thumbheight = $thumb->height;
+
+			$thumb->_destroy();
+		}
+		return $file_obj;
+	}
+
+	static public function createWebmThumbnail($file_obj, $op){
+		global $config, $board;
+		require_once 'inc/lib/webm/ffmpeg.php';
+		require_once 'inc/lib/webm/posthandler.php';
+		$file_obj->thumb_path = $board['dir'] . $config['dir']['thumb'] . $file_obj->file_id . '.png';
+		$file_obj->thumb_path = 'abc.png';
+		$file = set_thumbnail_dimensions((object) array('op' => $op), $file_obj);
+		$webminfo = get_webm_info($file_obj->file_path, $config['webm']['expected_format'][$file_obj->extension]);
+		make_webm_thumbnail($file_obj->file_path, $file_obj->thumb_path, $file->thumbwidth, $file->thumbheight, $webminfo);
+		return $file_obj;
+	}
+
+	static public function proccess($post){
+		global $config,$board;
+
+		if ($post['has_file']) {
+		foreach ($post['files'] as $key => &$file) {
+		if ($file['is_an_image']) {
+			if ($config['ie_mime_type_detection'] !== false) {
+				// Check IE MIME type detection XSS exploit
+				$buffer = file_get_contents($file['tmp_name'], null, null, null, 255);
+				if (preg_match($config['ie_mime_type_detection'], $buffer)) {
+					undoImage($post);
+					error($config['error']['mime_exploit']);
+				}
+			}
+
+			require_once 'inc/image.php';
+
+			// find dimensions of an image using GD
+			if (!$size = @getimagesize($file['tmp_name'])) {
+				error($config['error']['invalidimg']);
+			}
+			if (!in_array($size[2], array(IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_JPEG, IMAGETYPE_BMP, IMAGETYPE_WEBP))) {
+				error($config['error']['invalidimg']);
+			}
+			if ($size[0] > $config['max_width'] || $size[1] > $config['max_height']) {
+				error($config['error']['maxsize']);
+			}
+
+
+			if ($config['convert_auto_orient'] && ($file['extension'] == 'jpg' || $file['extension'] == 'jpeg')) {
+				// The following code corrects the image orientation.
+				// Currently only works with the 'convert' option selected but it could easily be expanded to work with the rest if you can be bothered.
+				if (!($config['redraw_image'] || (($config['strip_exif'] && !$config['use_exiftool']) && ($file['extension'] == 'jpg' || $file['extension'] == 'jpeg')))) {
+					if (in_array($config['thumb_method'], array('convert', 'convert+gifsicle', 'gm', 'gm+gifsicle'))) {
+						$exif = @exif_read_data($file['tmp_name']);
+						$gm = in_array($config['thumb_method'], array('gm', 'gm+gifsicle'));
+						if (isset($exif['Orientation']) && $exif['Orientation'] != 1) {
+							if ($config['convert_manual_orient']) {
+								$error = shell_exec_error(($gm ? 'gm ' : '') . 'convert ' .
+									escapeshellarg($file['tmp_name']) . ' ' .
+									ImageConvert::jpeg_exif_orientation(false, $exif) . ' ' .
+									($config['strip_exif'] ? '+profile "*"' :
+										($config['use_exiftool'] ? '' : '+profile "*"')
+									) . ' ' .
+									escapeshellarg($file['tmp_name']));
+								if ($config['use_exiftool'] && !$config['strip_exif']) {
+									if ($exiftool_error = shell_exec_error(
+										'exiftool -overwrite_original -q -q -orientation=1 -n ' .
+											escapeshellarg($file['tmp_name'])))
+										error(_('exiftool failed!'), null, $exiftool_error);
+								} else {
+									// TODO: Find another way to remove the Orientation tag from the EXIF profile
+									// without needing `exiftool`.
+								}
+							} else {
+								$error = shell_exec_error(($gm ? 'gm ' : '') . 'convert ' .
+										escapeshellarg($file['tmp_name']) . ' -auto-orient ' . escapeshellarg($upload));
+							}
+							if ($error)
+								error(_('Could not auto-orient image!'), null, $error);
+							$size = @getimagesize($file['tmp_name']);
+							if ($config['strip_exif'])
+								$file['exif_stripped'] = true;
+						}
+					}
+				}
+			}
+
+			// create image object
+			$image = new Image($file['tmp_name'], $file['extension'], $size);
+			if ($image->size->width > $config['max_width'] || $image->size->height > $config['max_height']) {
+				$image->delete();
+				error($config['error']['maxsize']);
+			}
+
+			$file['width'] = $image->size->width;
+			$file['height'] = $image->size->height;
+
+			if ($config['spoiler_images'] && isset($_POST['spoiler']) && $_POST['spoiler'] != "default") {
+				$file['thumb'] = 'spoiler';
+				$file['spoiler'] = $_POST['spoiler'];
+				if($_POST['spoiler'] == "spoiler"){
+					$size =  @getimagesize($config['spoiler_image']);
+				} else{
+					$size = @getimagesize($config['nsfw_image']);
+				}
+				$file['thumbwidth'] = $size[0];
+				$file['thumbheight'] = $size[1];
+			} elseif ($config['minimum_copy_resize'] &&
+				$image->size->width <= $config['thumb_width'] &&
+				$image->size->height <= $config['thumb_height'] &&
+				$file['extension'] == ($config['thumb_ext'] ? $config['thumb_ext'] : $file['extension'])) {
+
+				// Copy, because there's nothing to resize
+				copy($file['tmp_name'], $file['thumb']);
+
+				$file['thumbwidth'] = $image->size->width;
+				$file['thumbheight'] = $image->size->height;
+			} else {
+				$thumb = $image->resize(
+					$config['thumb_ext'] ? $config['thumb_ext'] : $file['extension'],
+					$post['op'] ? $config['thumb_op_width'] : $config['thumb_width'],
+					$post['op'] ? $config['thumb_op_height'] : $config['thumb_height']
+				);
+
+				$thumb->to($file['thumb']);
+
+				$file['thumbwidth'] = $thumb->width;
+				$file['thumbheight'] = $thumb->height;
+
+				$thumb->_destroy();
+			}
+
+			if ($config['redraw_image'] || (!@$file['exif_stripped'] && $config['strip_exif'] && ($file['extension'] == 'jpg' || $file['extension'] == 'jpeg'))) {
+				if (!$config['redraw_image'] && $config['use_exiftool']) {
+					if($error = shell_exec_error('exiftool -overwrite_original -ignoreMinorErrors -q -q -all= ' .
+						escapeshellarg($file['tmp_name'])))
+						error(_('Could not strip EXIF metadata!'), null, $error);
+				} else {
+					$image->to($file['file']);
+					$dont_copy_file = true;
+				}
+			}
+			$image->destroy();
+		} else {
+			// not an image
+			//copy($config['file_thumb'], $post['thumb']);
+			$file['thumb'] = 'file';
+
+			$size = @getimagesize(sprintf($config['file_thumb'],
+				isset($config['file_icons'][$file['extension']]) ?
+					$config['file_icons'][$file['extension']] : $config['file_icons']['default']));
+			$file['thumbwidth'] = $size[0];
+			$file['thumbheight'] = $size[1];
+		}
+
+		if ($config['tesseract_ocr'] && $file['thumb'] != 'file') { // Let's OCR it!
+			$fname = $file['tmp_name'];
+
+			if ($file['height'] > 500 || $file['width'] > 500) {
+				$fname = $file['thumb'];
+			}
+
+			if ($fname == 'spoiler') { // We don't have that much CPU time, do we?
+			}
+			else {
+				$tmpname = "tmp/tesseract/".rand(0,10000000);
+
+				// Preprocess command is an ImageMagick b/w quantization
+				$error = shell_exec_error(sprintf($config['tesseract_preprocess_command'], escapeshellarg($fname)) . " | " .
+                                                          'tesseract stdin '.escapeshellarg($tmpname).' '.$config['tesseract_params']);
+				$tmpname .= ".txt";
+
+				$value = @file_get_contents($tmpname);
+				@unlink($tmpname);
+
+				if ($value && trim($value)) {
+					// This one has an effect, that the body is appended to a post body. So you can write a correct
+					// spamfilter.
+					$post['body_nomarkup'] .= "<tinyboard ocr image $key>".htmlspecialchars($value)."</tinyboard>";
+				}
+			}
+		}
+		if (!isset($dont_copy_file) || !$dont_copy_file) {
+			if (isset($file['file_tmp'])) {
+				if (!rename($file['tmp_name'], $file['file']))
+					error($config['error']['nomove']);
+				chmod($file['file'], 0644);
+			} elseif (!move_uploaded_file($file['tmp_name'], $file['file']))
+				error($config['error']['nomove']);
+			}
+		}
+
+		if ($config['image_reject_repost']) {
+			if ($p = getPostByHash($post['filehash'])) {
+				undoImage($post);
+				error(sprintf($config['error']['fileexists'],
+					($post['mod'] ? $config['root'] . $config['file_mod'] . '?/' : $config['root']) .
+					($board['dir'] . $config['dir']['res'] .
+						($p['thread'] ?
+							$p['thread'] . '.html#' . $p['id']
+						:
+							$p['id'] . '.html'
+						))
+				));
+			}
+		} else if (!$post['op'] && $config['image_reject_repost_in_thread']) {
+			if ($p = getPostByHashInThread($post['filehash'], $post['thread'])) {
+				undoImage($post);
+				error(sprintf($config['error']['fileexistsinthread'],
+					($post['mod'] ? $config['root'] . $config['file_mod'] . '?/' : $config['root']) .
+					($board['dir'] . $config['dir']['res'] .
+						($p['thread'] ?
+							$p['thread'] . '.html#' . $p['id']
+						:
+							$p['id'] . '.html'
+						))
+				));
+			}
+		}
+		}
+	}
+
+	static public function evaluateBlockhashNearness($given_hash, $comparision_hash){
+		global $config;
+		$total_difference_value = 0;
+		for ($block_index = 0;$block_index < 62 ; $block_index += 2){
+			$given_str_hex = substr($given_hash, $block_index,  2);
+			$given_block = intval($given_str_hex, 16);
+			$comparision_str_hex = substr($comparision_hash, $block_index, 2);
+			$comparision_block = intval($comparision_str_hex, 16);
+			$difference = abs($given_block - $comparision_block);
+			$total_difference_value += $difference;
+		}
+		if($total_difference_value < $config['blockhash_nearness_threshold']){
+			error($given_hash . " collides with " . $comparision_hash . " with value of " . $total_difference_value);
+		}
+		return $total_difference_value < $config['blockhash_nearness_threshold'];
+	}
+}
 
 if (PHP_MAJOR_VERSION <= 7 && PHP_MINOR_VERSION < 2) {
 	include 'inc/image/bmp.php';

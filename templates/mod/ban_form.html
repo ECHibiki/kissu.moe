@@ -11,17 +11,18 @@
 	{% endif %}
 	{% if post and board %}
 		<input type="hidden" name="delete" value="{% if delete %}1{% else %}0{% endif %}">
+		<input type="hidden" name="hash" value="{% if hash %}1{% else %}0{% endif %}">
 	{% endif %}
-	
+
 	<table>
-		
+
 		<tr>
 			<th>
 				<label for="ip">{% trans 'IP' %} <span class="unimportant">{% trans '(or subnet)' %}</span></label>
 			</th>
 			<td>
 				{% if not hide_ip %}
-					<input type="text" name="ip" id="ip" size="30" maxlength="40" value="{{ ip|e }}">
+					<input type="text" name="ip" id="ip" size="30" maxlength="50" value="{{ ip|e }}">
 				{% else %}
 					<em>{% trans 'hidden' %}</em>
 				{% endif %}
@@ -41,8 +42,8 @@
 					<label for="reason">{% trans 'Message' %}</label>
 				</th>
 				<td>
-					<input type="checkbox" id="public_message" name="public_message"{% if config.mod.check_ban_message %} checked{% endif %}> 
-					<input type="text" name="message" id="message" size="35" maxlength="200" value="{{ config.mod.default_ban_message|e }}"> 
+					<input type="checkbox" id="public_message" name="public_message"{% if config.mod.check_ban_message %} checked{% endif %}>
+					<input type="text" name="message" id="message" size="35" maxlength="200" value="{{ config.mod.default_ban_message|e }}">
 					<span class="unimportant">({% trans 'public; attached to post' %})</span>
 					<script type="text/javascript">
 						document.getElementById('message').disabled = !document.getElementById('public_message').checked;
@@ -58,7 +59,7 @@
 				<label for="length">{% trans 'Length' %}</label>
 			</th>
 			<td>
-				<input type="text" name="length" id="length" size="20" maxlength="40"> 
+				<input type="text" name="length" id="length" size="20" maxlength="50">
 					<span class="unimportant">(eg. "2d1h30m" or "2 days")</span></td>
 			</tr>
 		<tr>
@@ -66,15 +67,15 @@
 			<td>
 				<ul style="list-style:none;padding:2px 5px">
 					<li>
-						<input type="radio" name="board" value="*" id="ban-allboards" checked> 
+						<input type="radio" name="board" value="*" id="ban-allboards" checked>
 						<label style="display:inline" for="ban-allboards">
 							<em>{% trans 'all boards' %}</em>
 						</label>
 					</li>
-					
+
 					{% for board in boards %}
 						<li>
-							<input type="radio" name="board" value="{{ board.uri }}" id="ban-board-{{ board.uri }}"> 
+							<input type="radio" name="board" value="{{ board.uri }}" id="ban-board-{{ board.uri }}">
 							<label style="display:inline" for="ban-board-{{ board.uri }}">
 								{{ config.board_abbreviation|sprintf(board.uri) }} - {{ board.title|e }}
 							</label>
@@ -89,4 +90,3 @@
 		</tr>
 	</table>
 </form>
-

@@ -1,0 +1,18 @@
+<fieldset>
+  <legend>All Tokens</legend>
+  <table border="1">
+    <thead>
+      <th>ID</th>
+      <th>Owner</th>
+      <th>Token</th>
+    </thead>
+    <tbody>
+		{% for token in wl_tokens %}
+    <tr>
+      <th>{{token.id}}</th><td>{{token.owner}}</td><td>{{token.token}}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</fieldset>
+{% include 'mod/whitelist_token_gen.html' %}

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS ``posts_{{ board }}`` (
    `subject` varchar(100) DEFAULT NULL,
    `email` varchar(30) DEFAULT NULL,
    `name` varchar(35) DEFAULT NULL,
-   `trip` varchar(15) DEFAULT NULL,
+   `trip` varchar(80) DEFAULT NULL,
    `capcode` varchar(50) DEFAULT NULL,
    `body` text NOT NULL,
    `body_nomarkup` text,
@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS ``posts_{{ board }}`` (
    `locked` int(1) NOT NULL,
    `cycle` int(1) NOT NULL,
    `sage` int(1) NOT NULL,
+   `wl_token` varchar(255) DEFAULT NULL,
    `embed` text,
    `slug` varchar(256) DEFAULT NULL,
    UNIQUE KEY `id` (`id`),
@@ -28,4 +29,3 @@ CREATE TABLE IF NOT EXISTS ``posts_{{ board }}`` (
    KEY `ip` (`ip`),
    KEY `list_threads` (`thread`, `sticky`, `bump`)
  ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1 ;
- 

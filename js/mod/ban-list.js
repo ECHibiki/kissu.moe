@@ -1,4 +1,4 @@
-var banlist_init = function(token, my_boards, inMod) {
+var banlist_init = function(token, my_boards, inMod, full=false) {
   inMod = !inMod;
 
   var lt;
@@ -7,7 +7,7 @@ var banlist_init = function(token, my_boards, inMod) {
 
   var time = function() { return Date.now()/1000|0; }
 
-  $.getJSON(inMod ? ("?/bans.json/"+token) : token, function(t) {
+  $.getJSON(inMod ? ( full ?  ("?/bans-full.json/"+token) : ("?/bans.json/"+token)  ) : token, function(t) {
     $("#banlist").on("new-row", function(e, drow, el) {
       var sel = selected[drow.id];
       if (sel) {
@@ -60,7 +60,7 @@ var banlist_init = function(token, my_boards, inMod) {
       // duration?
       expires: {name: _("Expires"), width: "235px", fmt: function(f) {
 	if (!f.expires || f.expires == 0) return "<em>"+_("never")+"</em>";
-        return strftime(window.post_date, new Date((f.expires|0)*1000), datelocale) + 
+        return strftime(window.post_date, new Date((f.expires|0)*1000), datelocale) +
           ((f.expires < time()) ? "" : " <small>"+_("in ")+until(f.expires|0)+"</small>");
       } },
       username: {name: _("Staff"), width: "100px", fmt: function(f) {

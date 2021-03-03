@@ -24,13 +24,13 @@ $(document).ready(function(){
 	if($('div.banner').length == 0)
 		return; // not index
 		
-	if($(".post.op").size() != 1)
+	if($(".post.op").length != 1)
 		return; //not thread page
 	
 	var countdown_interval;
 
 	// Add an update link
-	$('.boardlist.bottom').prev().after("<span id='updater'><a href='#' id='update_thread' style='padding-left:10px'>["+_("Update")+"]</a> (<input type='checkbox' id='auto_update_status' checked> "+_("Auto")+") <span id='update_secs'></span></span>");
+	$('#thread-interactions').prev().after("<span id='updater'><a href='#' id='update_thread' style='padding-left:10px'>["+_("Update")+"]</a>&nbsp&nbsp&nbsp(<input type='checkbox' id='auto_update_status' checked> "+_("Auto")+") <span id='update_secs'></span></span>");
 
 	// Grab the settings
 	var settings = new script_settings('auto-reload');
@@ -142,6 +142,7 @@ $(document).ready(function(){
 	
 		$.ajax({
 			url: document.location,
+			cache: false,
 			success: function(data) {
 				var loaded_posts = 0;	// the number of new posts loaded in this update
 				$(data).find('div.post.reply').each(function() {

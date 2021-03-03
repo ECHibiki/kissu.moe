@@ -1,0 +1,8 @@
+<input class="sensitive whitelist"  id="wl-input-scripted" name="wl_token[]" type="hidden" style="display:none"/>
+<input id="wl-button" type="button" onclick="setWhitelistToken()" value="Set Token" style="display:none"/>
+<script>
+  document.getElementById("wl-input-scripted").style="";
+  document.getElementById("wl-button").style="";
+  document.getElementById("wlrow").style="display:none";
+</script>
+<noscript><input class="sensitive whitelist" name="wl_token[]" type="text" placeholder="----"/></noscript>

@@ -1,36 +1,171 @@
-{% filter remove_whitespace %}
+{% if config.ban_block %}
+{% include 'checkban.php' %}
+{% endif %}
 <!doctype html>
 <html>
 <head>
+	<meta charset="utf-8">
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
 	<script type='text/javascript'>
 		var active_page = "catalog"
-		  , board_name = "{{ board }}";
+		  , board_name = "{{ board.uri }}";
 	</script>
 	{% include 'header.html' %}
-	<title>{{ board }} - Catalog</title>
+	<title>{{ board.uri }}&nbsp;-&nbsp;Catalog</title>
 </head>
 <body class="8chan vichan {% if mod %}is-moderator{% else %}is-not-moderator{% endif %} theme-catalog active-catalog" data-stylesheet="{% if config.default_stylesheet.1 != '' %}{{ config.default_stylesheet.1 }}{% else %}default{% endif %}">
-	{{ boardlist.top }}
-	<header>
-		<h1>{{ settings.title }} (<a href="{{link}}">/{{ board }}/</a>)</h1>
-		<div class="subtitle">{{ settings.subtitle }}</div>
-	</header>
+<div id="uppercontents">
+	<div id="subuppercontents">
+		{{ boardlist.top }}
+	<a name="top"></a>
+	{% if pm %}<div class="top_notice">You have <a href="?/PM/{{ pm.id }}">an unread PM</a>{% if pm.waiting > 0 %}, plus {{ pm.waiting }} more waiting{% endif %}.</div><hr />{% endif %}
+	{% if config.url_banner_list %}
+		<div id="bannerimg" class="head-banner-container" ><noscript><iframe src="https://art.kissu.moe/banner?size=small" width="300" height="140" scrolling="no" style="margin:auto;display:block;border: none;"></iframe></noscript></div>
+			<script>
+				{% if config.preload_banner %}
+					var fetch2 = new XMLHttpRequest();
+					fetch2.open("GET", "{{ config.url_banner_list }}");
+					fetch2.addEventListener("load", function(){
+						let info = JSON.parse(this.responseText)[0];
 
+						window.ban_img = document.createElement("IMG");
+						window.ban_img.setAttribute('src', "{{ config.banner_src }}" + info['uri']);
+						window.ban_img.setAttribute('style', 'margin:auto;display:block;border: none;;max-width:100%;border:none;');
+						window.ban_img.setAttribute('id', "clickerimg");
+
+						if(document.getElementById("bannerimg") != undefined)
+							document.getElementById("bannerimg").appendChild(window.ban_img);
+					});
+					fetch2.send();
+				{% endif %}
+			</script>
+{% endif %}
+	<header>
+	<h1 style="padding-top:10px;">{{ board.url }} - {{ board.title|e }}</h1>
+	<div class="subtitle">
+		{% if board.subtitle %}
+			{% if config.allow_subtitle_html %}
+				{{ board.subtitle }}
+			{% else %}
+				{{ board.subtitle|e }}
+			{% endif %}
+		{% endif %}
+		{% if mod %}<p><a href="?/">{% trans %}Return to dashboard{% endtrans %}</a></p>{% endif %}
+	</div>
+	</header>
+	<h1>New Thread</h1>
+	<div id="topcontainer">
+	{% include 'attention_bar.html' %}
+
+	{{ config.ad.top }}
+	<div>
+{% if config.poll_board %}
+<h1 id="pollheader" style="display:none">New poll</h1>
+{% else %}
+
+{% endif %}
+	<div>
+	{% if not no_post_form %}
+		{% if config.poll_board %}
+			{% include 'post_form_poll.html' %}
+                {% elseif config.advanced_post_form  %}
+                       {% include 'post_form_advanced.html' %}
+                {% else %}
+                        {% include 'post_form.html' %}
+                {% endif %}
+
+	{% endif %}
+	</div>
+	</div>
+	{% if config.banner_ads %}
+	        {% if config.iframe_banner %}
+	              {% include 'frame-banner.html' %}
+	        {% elseif config.preload_banner %}
+	              <div id='banner-container'><noscript>{% include 'frame-banner.html' %}</noscript></div>
+					<script>
+						{% if config.preload_banner %}
+							var fetch = new XMLHttpRequest();
+							fetch.open("GET", "{{ config.banner_src }}{{ config.banner_api_route }}");
+							fetch.addEventListener("load", function(){
+								let info = JSON.parse(this.responseText)[0];
+
+								window.ban_url = document.createElement("A");
+								window.ban_url.setAttribute('href', info['url']);
+								ban_url.setAttribute('style', 'display:contents');
+
+								let ban_img = document.createElement("IMG");
+								ban_img.setAttribute('src', "{{ config.banner_src }}" + info['uri']);
+								ban_img.setAttribute('style', 'margin:auto;display:block;border: none;;max-width:100%;border:none;');
+
+
+								window.ban_url.appendChild(ban_img);
+								if(document.getElementById("banner-container") != undefined)
+									document.getElementById("banner-container").appendChild(window.ban_url);
+							});
+							fetch.send();
+						{% endif %}
+					</script>
+	        {% endif %}
+	{% endif %}
+	</div>
+	</div>
+	</div>
+	{% if config.page_nav_top %}
+		<div class="pages top">
+			{% for page in pages %}
+			 [<a {% if page.selected %}class="selected"{% endif %}{% if not page.selected %}href="{{ page.link }}"{% endif %}>{{ page.num }}</a>]{% if loop.last %} {% endif %}
+			{% endfor %}
+			{{ btn.next }}
+		</div>
+	{% endif %}
+	<div id="lowercontents">
+	{% if config.global_message %}<hr /><div class="blotter">{{ config.global_message }}</div>{% endif %}
+	<hr />
+	{% if config.board_search %}
+	<!-- Start Search Form -->
+        	<form style="display:inline" action="/search.php">
+                	<p style="margin: 10px;">
+                    		<input type="text" name="search" placeholder="{{ board.uri }} search">
+                    		<input type="hidden" name="board" value="{{ board.uri }}">
+                    		<input type="submit" value="Search">
+                	</p>
+        	</form>
+    	<!-- End Search Form -->
+    	{% endif %}
+	{% if mod %}<form name="postcontrols" action="{{ config.post_url }}" method="post">
+	<input type="hidden" name="board" value="{{ board.uri }}" />
+	<input type="hidden" name="mod" value="1" />
+	{{ body }}
+	</form>{% endif %}
+
+	<span id="thread-links-top">
+		<a id="thread-return-top" href="{{ return }}">[{% trans %}Refresh{% endtrans %}]</a>
+		<a id="thread-bottom" href="#bottom">[{% trans %}Bottom{% endtrans %}]</a>
+				{% if config.catalog_link %}
+			<a id="thread-catalog-top" href="{{ config.root }}{{ board.dir }}">[{% trans %}Index{% endtrans %}]</a>
+				{% endif %}
+{% if config.archive.threads %}
+&nbsp;<a id="archive-link-top" href="{{ config.root }}{{ board.dir }}archive/">[Archive]</a>
+{% endif %}
+	</span>
+	<br/><hr/>
+	<div id='catalog_options'>
         <span>{% trans 'Sort by' %}: </span>
         <select id="sort_by" style="display: inline-block">
                 <option selected value="bump:desc">{% trans 'Bump order' %}</option>
                 <option value="time:desc">{% trans 'Creation date' %}</option>
                 <option value="reply:desc">{% trans 'Reply count' %}</option>
-                <option value="random:desc">{% trans 'Random' %}</option>
+                <!--<option value="random:desc">{% trans 'Random' %}</option>-->
         </select>
- 
+
         <span>{% trans 'Image size' %}: </span>
         <select id="image_size" style="display: inline-block">
                 <option value="vsmall">{% trans 'Very small' %}</option>
-                <option selected value="small">{% trans 'Small' %}</option>
+                <option value="small" selected>{% trans 'Small' %}</option>
                 <option value="large">{% trans 'Large' %}</option>
         </select>
+		</div>
+		<br/>
         <div class="threads">
                 <div id="Grid">
                 {% for post in recent_posts %}
@@ -42,12 +177,12 @@
 				 data-sticky="{% if post.sticky %}true{% else %}false{% endif %}"
 				 data-locked="{% if post.locked %}true{% else %}false{% endif %}"
 			>
-                                <div class="thread grid-li grid-size-small">  
-                                        <a href="{{post.link}}">  
+                                <div class="thread grid-li grid-size-small">
+                                        <a href="{{post.link}}">
 						{% if post.youtube %}
-							<img src="//img.youtube.com/vi/{{ post.youtube }}/0.jpg" 
+							<img src="//img.youtube.com/vi/{{ post.youtube }}/0.jpg"
 						{% else %}
-							<img src="{{post.file}}" 
+							<img src="{{post.file}}"
 						{% endif %}
                                                  id="img-{{ post.id }}" data-subject="{% if post.subject %}{{ post.subject|e }}{% endif %}" data-name="{{ post.name|e }}" data-muhdifference="{{ post.muhdifference }}" class="{{post.board}} thread-image" title="{{post.bump|date('%b %d %H:%M')}}">
                                         </a>
@@ -70,25 +205,38 @@
                 {% endfor %}
                 </div>
         </div>
-	
 	<hr/>
-	<footer>
-		<p class="unimportant" style="margin-top:20px;text-align:center;">- Tinyboard + 
-			<a href="https://engine.vichan.net/">vichan</a> {{ config.version }} -
-		<br>Tinyboard Copyright &copy; 2010-2014 Tinyboard Development Group    
-		<br><a href="https://engine.vichan.net/">vichan</a> Copyright &copy; 2012-2018 vichan-devel</p>
-	</footer>
-	<script type="text/javascript">{% raw %}
-		var styles = {
-			{% endraw %}
-			{% for name, uri in config.stylesheets %}{% raw %}'{% endraw %}{{ name|addslashes }}{% raw %}' : '{% endraw %}/stylesheets/{{ uri|addslashes }}{% raw %}',
-			{% endraw %}{% endfor %}{% raw %}
-		}; onready(init);
-	{% endraw %}</script>
+
+	<span id="thread-links">
+		<a id="thread-return" href="{{ return }}">[{% trans %}Refresh{% endtrans %}]</a>
+		<a id="thread-top" href="#top">[{% trans %}Top{% endtrans %}]</a>
+				{% if config.catalog_link %}
+			<a id="thread-catalog" href="{{ config.root }}{{ board.dir }}">[{% trans %}Index{% endtrans %}]</a>
+				{% endif %}
+{% if config.archive.threads %}
+<a id="archive-link-bottom" href="{{ config.root }}{{ board.dir }}archive/">[Archive]</a>
+	{% endif %}
+	</span>
+	<br/><hr/>
+	<a name='bottom'></a>
+	{% include 'footer.template' %}
+<!-- <script type="text/javascript">{% raw %} -->
+		<!-- var styles = { -->
+			<!-- {% endraw %} -->
+			<!-- {% for name, uri in config.stylesheets %}{% raw %}'{% endraw %}{{ name|addslashes }}{% raw %}' : '{% endraw %}/stylesheets/{{ uri|addslashes }}{% raw %}', -->
+			<!-- {% endraw %}{% endfor %}{% raw %} -->
+		<!-- };  -->
+		<!-- if(is_style_select == false){ -->
+			<!-- onready(init); -->
+		<!-- } -->
+	<!-- {% endraw %}</script> -->
 
 	<script type="text/javascript">{% raw %}
 		ready();
 	{% endraw %}</script>
+</div>
 </body>
 </html>
-{% endfilter %}
+{% if config.ban_block %}
+{% include 'checkban.php' %}
+{% endif %}

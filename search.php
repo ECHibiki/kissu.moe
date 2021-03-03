@@ -1,6 +1,21 @@
 <?php
 	require 'inc/functions.php';
 	
+	function search_filters($m) {
+		global $filters;
+		$name = $m[2];
+		$value = isset($m[4]) ? $m[4] : $m[3];
+		
+		if(!in_array($name, array('id', 'thread', 'subject', 'name'))) {
+			// unknown filter
+			return $m[0];
+		}
+		
+		$filters[$name] = $value;
+		
+		return $m[1];
+	}
+	
 	if (!$config['search']['enable']) {
 		die(_("Post search is disabled"));
 	}
@@ -51,21 +66,6 @@
 		openBoard($_GET['board']);
 		
 		$filters = Array();
-		
-		function search_filters($m) {
-			global $filters;
-			$name = $m[2];
-			$value = isset($m[4]) ? $m[4] : $m[3];
-			
-			if(!in_array($name, array('id', 'thread', 'subject', 'name'))) {
-				// unknown filter
-				return $m[0];
-			}
-			
-			$filters[$name] = $value;
-			
-			return $m[1];
-		}
 		
 		$phrase = trim(preg_replace_callback('/(^|\s)(\w+):("(.*)?"|[^\s]*)/', 'search_filters', $phrase));
 		
@@ -166,7 +166,116 @@
 		else
 			$body .= '<p style="text-align:center" class="unimportant">('._('No results.').')</p>';
 	}
+	else if (isset($_GET['search']) && !empty($_GET['search'])){
+		$boards = listBoards();
+		$phrase = $_GET['search'];
+		$filters = Array();
 		
+		
+		$phrase = trim(preg_replace_callback('/(^|\s)(\w+):("(.*)?"|[^\s]*)/', 'search_filters', $phrase));
+		
+		if(!preg_match('/[^*^\s]/', $phrase) && empty($filters)) {
+			_syslog(LOG_WARNING, 'Query too broad.');
+			$wip_body .= '<p class="unimportant" style="text-align:center">(Query too broad.)</p>';
+			echo Element('page.html', Array(
+				'config'=>$config,
+				'title'=>'Search',
+				'body'=>$body,
+			));
+			exit;
+		}
+		
+		// Escape escape character
+		$phrase = str_replace('!', '!!', $phrase);
+		
+		// Remove SQL wildcard
+		$phrase = str_replace('%', '!%', $phrase);
+		
+		// Use asterisk as wildcard to suit convention
+		$phrase = str_replace('*', '%', $phrase);
+		
+		// Remove `, it's used by table prefix magic
+		$phrase = str_replace('`', '!`', $phrase);
+
+		$like = '';
+		$match = Array();
+		
+		// Find exact phrases
+		if(preg_match_all('/"(.+?)"/', $phrase, $m)) {
+			foreach($m[1] as &$quote) {
+				$phrase = str_replace("\"{$quote}\"", '', $phrase);
+				$match[] = $pdo->quote($quote);
+			}
+		}
+		
+		$words = explode(' ', $phrase);
+		foreach($words as &$word) {
+			if(empty($word))
+				continue;
+			$match[] = $pdo->quote($word);
+		}
+		
+		$like = '';
+		foreach($match as &$phrase) {
+			if(!empty($like))
+				$like .= ' AND ';
+			$phrase = preg_replace('/^\'(.+)\'$/', '\'%$1%\'', $phrase);
+			$like .= '`body` LIKE ' . $phrase . ' ESCAPE \'!\'';
+		}
+		
+		foreach($filters as $name => $value) {
+			if(!empty($like))
+				$like .= ' AND ';
+			$like .= '`' . $name . '` = '. $pdo->quote($value);
+		}
+		$like = str_replace('%', '%%', $like);
+		foreach($boards as $board_obj){
+			$wip_body = '';
+			$_body = '';
+			openBoard($board_obj['uri']);
+			$query = prepare(sprintf("SELECT * FROM ``posts_%s`` WHERE " . $like . " ORDER BY `time` DESC LIMIT :limit", $board['uri']));
+			$query->bindValue(':limit', $search_limit, PDO::PARAM_INT);
+			$query->execute() or error(db_error($query));
+			
+			if($query->rowCount() == $search_limit) {
+				_syslog(LOG_WARNING, 'Query too broad.');
+				$wip_body .= '<p class="unimportant" style="text-align:center">('._('Query too broad.').')</p>';
+				echo Element('page.html', Array(
+					'config'=>$config,
+					'title'=>'Search',
+					'body'=>$wip_body,
+				));
+				exit;
+			}
+
+			$temp = '';
+			while($post = $query->fetch()) {
+				if(!$post['thread']) {
+					$po = new Thread($post);
+				} else {
+					$po = new Post($post);
+				}
+				$temp .= $po->build(true) . '<hr/>';
+			}
+			
+			if(!empty($temp))
+				$_body .= '<fieldset><legend>' .
+						sprintf(ngettext('%d result in', '%d results in', $query->rowCount()), 
+						$query->rowCount()) . ' <a href="/' .
+						sprintf($config['board_path'], $board['uri']) . $config['file_index'] .
+				'">' .
+				sprintf($config['board_abbreviation'], $board['uri']) . ' - ' . $board['title'] .
+				'</a></legend>' . $temp . '</fieldset>';
+			
+			if(!empty($_body)){
+				$wip_body .= '<hr/>';
+				$wip_body .= $_body;
+			}
+			else
+				$wip_body .= '<p style="text-align:center" class="unimportant">('._('No results on /'). $board['dir'] .')</p>';
+			$body .= $wip_body;
+		}
+	}
 	echo Element('page.html', Array(
 		'config'=>$config,
 		'title'=>_('Search'),

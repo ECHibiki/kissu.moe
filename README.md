@@ -1,34 +1,37 @@
-vichan - A lightweight and full featured PHP imageboard.
+ViQa-Kissu - An expanded lightweight and full featured PHP imageboard.
 ========================================================
+
+## This repo is a working directory and not intended for reuse. It's missing a good majority of files.
+### If interested in using this software for your own imageboard, a version should be around sometime between Christmas and early January on a release/master branch and tag.
 
 About
 ------------
-vichan is a free light-weight, fast, highly configurable and user-friendly
-imageboard software package. It is written in PHP and has few dependencies.
+ViQa-Kissu is an expansion on top of the free light-weight, fast, highly configurable and user-friendly
+imageboard software package, ViChan. ViQa is written in PHP and has few dependencies. It aims to expand upon the current structure of ViChan to provide expanded functionality with a focus on more democratic and powerful system of moderation to beat spam while staying liked by your users.
+
+On December 2018, ECHibiki started this repo to expose the source of /qa/'s Kissu.moe
 
 In November 2017, Marcin Łabanowski (@czaks) retired as maintainer for personal reasons. His retirement may be temporary, but in his absence, Fredrick Brennan (@ctrlcctrlv), co-maintainer since 2013, and #3 in terms of number of commits, took his place as interim sole maintianer and point of contact. (See [issue #266](https://github.com/vichan-devel/vichan/issues/266))
 
 *Security problems can be reported to Fredrick Brennan at his email: COPYPASTE \<AT\> KITTENS \<DOT\> PH.*
 	
-Vichan is still accepting patches, but there is at the moment no active development besides fixing security problems and other serious bugs as they emerge. Given the lack of active development, we strongly urge you to consider other imageboard packages. It is the opinion of the vichan development team that no new vichan imageboards should be deployed, and other imageboard packages, such as lynxchan, used instead.
-
 History
 ------------
 vichan is a fork of (now defunc'd) [Tinyboard](http://github.com/savetheinternet/Tinyboard),
 a great imageboard package, actively building on it and adding a lot of features and other
 improvements.
 
-Support and announcements: https://engine.vichan.net/
+Some documentation may be found on our [wiki](https://github.com/vichan-devel/vichan/wiki). (feel free to contribute)
 
 Requirements
 ------------
-1.	PHP >= 5.4 (we still try to keep compatibility with php 5.3 as much as possible)
-        PHP 7.0 is explicitly supported. PHP 7.2 works as well, but may cause as yet unreported bugs.
+1.	PHP <= PHP 7.4.
 2.	MySQL/MariaDB server
 3.	[mbstring](http://www.php.net/manual/en/mbstring.installation.php) 
 4.	[PHP GD](http://www.php.net/manual/en/intro.image.php)
 5.	[PHP PDO](http://www.php.net/manual/en/intro.pdo.php)
-6.	A Unix-like OS, preferrably FreeBSD or Linux
+6.	A Unix-like OS, preferrably FreeBSD or Linux. 
+Notes. ViQa is developed on Ubuntu18.04 with an Ubuntu18.04 VPS Server
 
 We try to make sure vichan is compatible with all major web servers. vichan does not include an Apache ```.htaccess``` file nor does it need one.
 
@@ -46,8 +49,6 @@ You can contribute to vichan by:
 *	Providing feedback and suggestions
 *	Writing/editing documentation
 
-If you need help developing a patch, please join our IRC channel.
-
 Installation
 -------------
 1.	Download and extract vichan to your web directory or get the latest
@@ -61,8 +62,13 @@ Installation
 	default username and password combination: **admin / password**.
 
 Please remember to change the administrator account password.
-
+<<<<<<< HEAD
 See also: [Configuration Basics](https://web.archive.org/web/20121003095922/http://tinyboard.org/docs/?p=Config).
+=======
+
+See also: [Configuration Basics](https://github.com/vichan-devel/vichan/wiki/config).
+>>>>>>> 3a41c24e6e5bcea2f4b9f328ddf5ff0cb8a8b2e8
+
 
 Upgrade
 -------
@@ -80,21 +86,6 @@ Support
 vichan is still beta software -- there are bound to be bugs. If you find a
 bug, please report it.
 
-If you need assistance with installing, configuring, or using vichan, you may
-find support from a variety of sources:
-
-*	If you're unsure about how to enable or configure certain features, make
-	sure you have read the comments in ```inc/config.php```.
-*	Check out an [official vichan board](http://int.vichan.net/devel/).
-*	You can join vichan's IRC channel for support
-	[irc.6irc.net #vichan-devel](irc://irc.6irc.net/vichan-devel)
-
-### Tinyboard support
-vichan is based on a Tinyboard, so both engines have very much in common. These
-links may be helpful for you as well: 
-
-*	Tinyboard documentation can be found [here](https://web.archive.org/web/20121016074303/http://tinyboard.org/docs/?p=Main_Page).
-
 CLI tools
 -----------------
 There are a few command line interface tools, based on Tinyboard-Tools. These need
@@ -104,12 +95,6 @@ directory.
 You actually don't need these tools for your imageboard functioning, they are aimed
 at the power users. You won't be able to run these from shared hosting accounts
 (i.e. all free web servers).
-
-Localisation
-------------
-Wanting to have vichan in your language? You can contribute your translations at this URL:
-
-https://www.transifex.com/projects/p/tinyboard-vichan-devel/
 
 Oekaki
 ------

@@ -1,0 +1,19 @@
+<noscript>
+	<tr>
+		<th>Spoiler</th>
+		<td>{% if config.spoiler_images %} <input id="spoiler" name="spoiler" type="checkbox"> <label for="spoiler">{% trans %}Spoiler Image{% endtrans %}</label>{% endif %}</td>
+	</tr>
+	{% if not config.field_disable_password or (mod and post.mod|hasPermission(config.mod.bypass_field_disable, board.uri)) %}
+		<tr {% if config.field_hide_password %} id="pswrdrow" {% endif %}>
+			<th>
+				{% trans %}Password{% endtrans %}
+				{{ antibot.html() }}
+			</th>
+			<td >
+				<input type="text" name="pswrd" value="" size="12" maxlength="18" class="sensitive">
+				<span class="unimportant">{% trans %}(For file deletion.){% endtrans %}</span>
+				{{ antibot.html() }}
+			</td>
+		</tr>
+	{% endif %}
+</noscript>

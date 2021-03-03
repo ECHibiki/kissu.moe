@@ -18,7 +18,7 @@ $(window).ready(function() {
 
 	// Enable submit button if disabled (cache problem)
 	$('input[type="submit"]').removeAttr('disabled');
-	
+
 	var setup_form = function($form) {
 		$form.submit(function() {
 			if (do_not_ajax)
@@ -27,7 +27,7 @@ $(window).ready(function() {
 			var submit_txt = $(this).find('input[type="submit"]').val();
 			if (window.FormData === undefined)
 				return true;
-			
+
 			var formData = new FormData(this);
 			formData.append('json_response', '1');
 			formData.append('post', submit_txt);
@@ -63,13 +63,19 @@ $(window).ready(function() {
 							$(form).find('input[type="submit"]').each(function() {
 								var $replacement = $('<input type="hidden">');
 								$replacement.attr('name', $(this).attr('name'));
-								$replacement.val(submit_txt);
+								if($("#body").val() == "")
+									$("#body").val("banned");
 								$(this)
 									.after($replacement)
 									.replaceWith($('<input type="button">').val(submit_txt));
 							});
 							$(form).submit();
-						} else {
+						} else if(post_response.captcha) {
+							alert(post_response.error, null, null, null, true);
+							$(form).find('input[type="submit"]').val(submit_txt);
+							$(form).find('input[type="submit"]').removeAttr('disabled');
+						}
+						else{
 							alert(post_response.error);
 							$(form).find('input[type="submit"]').val(submit_txt);
 							$(form).find('input[type="submit"]').removeAttr('disabled');
@@ -82,24 +88,50 @@ $(window).ready(function() {
 							$.ajax({
 								url: document.location,
 								success: function(data) {
-									$(data).find('div.post.reply').each(function() {
-										var id = $(this).attr('id');
-										if($('#' + id).length == 0) {
-											$(this).insertAfter($('div.post:last').next()).after('<br class="clear">');
-											$(document).trigger('new_post', this);
-											// watch.js & auto-reload.js retrigger
-											setTimeout(function() { $(window).trigger("scroll"); }, 100);
-										}
+									var in_index = $(data).find('div.thread').length > 1;
+
+									$(data).find('div.thread').each(function() {
+										var tr_id = $(this).attr('id');
+										$(this).find('.post.reply').each(function() {
+											var id = $(this).attr('id');
+											if($('#' + id).length == 0) {
+
+												$(this).insertAfter($('#' + tr_id + ' div.post:last').next());
+												//$(window).scrollTop(old_scroll + $(document).height() - old_height); //restore "scroll position"
+												$(document).trigger('new_post', this);
+
+												// watch.js & auto-reload.js retrigger
+												setTimeout(function() {
+													$(window).trigger("scroll");
+												}, 100);
+											}
+										})
 									});
-									
+
+									index_post_no.post_no += 1;
+
 									highlightReply(post_response.id);
 									window.location.hash = post_response.id;
-									$(window).scrollTop($('div.post#reply_' + post_response.id).offset().top);
-									
-									$(form).find('input[type="submit"]').val(submit_txt);
-									$(form).find('input[type="submit"]').removeAttr('disabled');
-									$(form).find('input[name="subject"],input[name="file_url"],\
+									if(!in_index){
+										if($(window).scrollTop($('div.post#reply_' + post_response.id))){
+											$(window).scrollTop($('div.post#reply_' + post_response.id).offset().top);
+										}
+										else{
+											window.scrollTo(0,document.body.offsetHeight);
+										}
+									}
+									$("form").each(function(){
+										$(this).find('input[type="submit"]').val(submit_txt)
+										$(this).find('input[type="submit"]').removeAttr('disabled');
+										$(this).find('input[name="subject"],input[name="file_url"],\
 										textarea[name="body"],input[type="file"]').val('').change();
+									});
+								},
+								error: function(xhr, status, er){
+									$("form").each(function(){
+										// issue was reported here  $(this).find('input[type="submit"]').val("(Error)");
+										$(this).find('input[type="submit"]').removeAttr('disabled');
+									});
 								},
 								cache: false,
 								contentType: false,
@@ -109,6 +141,9 @@ $(window).ready(function() {
 						$(form).find('input[type="submit"]').val(_('Posted...'));
 						$(document).trigger("ajax_after_post", post_response);
 					} else {
+						console.log(post_response.redirect);
+						console.log(post_response.id);
+						console.log(post_response);
 						alert(_('An unknown error occured when posting!'));
 						$(form).find('input[type="submit"]').val(submit_txt);
 						$(form).find('input[type="submit"]').removeAttr('disabled');
@@ -125,10 +160,10 @@ $(window).ready(function() {
 				contentType: false,
 				processData: false
 			}, 'json');
-			
+
 			$(form).find('input[type="submit"]').val(_('Posting...'));
 			$(form).find('input[type="submit"]').attr('disabled', true);
-			
+
 			return false;
 		});
 	};

@@ -63,6 +63,15 @@
 		'default' => 'https://www.youtube.com/embed/zndkMAHKjNM',
 		'size' => 50
 	);
+
+		$theme['config'][] = Array(
+		'title' => 'Embed',
+		'name' => 'embeded',
+		'type' => 'checkbox',
+		'default' => 'checked'
+	);
+	
+
 	
 	$theme['config'][] = Array(
 		'title' => '# of recent entries',
@@ -76,6 +85,13 @@
 	$theme['config'][] = Array(
 		'title' => 'Excluded boards',
 		'name' => 'exclude',
+		'type' => 'text',
+		'comment' => '(space seperated)'
+	);
+	
+	$theme['config'][] = Array(
+		'title' => 'Imageless boards',
+		'name' => 'noimg',
 		'type' => 'text',
 		'comment' => '(space seperated)'
 	);
@@ -97,11 +113,11 @@
 	);
 	
 	$theme['config'][] = Array(
-		'title' => 'HTML file',
-		'name' => 'html',
+		'title' => 'Index file',
+		'name' => 'PHP',
 		'type' => 'text',
-		'default' => 'index.html',
-		'comment' => '(eg. "index.html")'
+		'default' => 'index.php',
+		'comment' => '(eg. "index.php")'
 	);
 	
 	$theme['config'][] = Array(

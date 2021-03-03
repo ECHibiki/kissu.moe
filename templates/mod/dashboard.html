@@ -1,14 +1,14 @@
 <fieldset>
 	<legend>{% trans 'Boards' %}</legend>
-	
+
 	<ul>
 		{% for board in boards %}
 			<li>
 				<a href="?/{{ config.board_path|sprintf(board.uri) }}{{ config.file_index }}">{{ config.board_abbreviation|sprintf(board.uri) }}</a>
-					 - 
+					 -
 				{{ board.title|e }}
 				{% if board.subtitle %}
-					<small>&mdash; 
+					<small>&mdash;
 						{% if config.allow_subtitle_html %}
 							{{ board.subtitle }}
 						{% else %}
@@ -24,7 +24,7 @@
 				{% endif %}
 			</li>
 		{% endfor %}
-		
+
 		{% if mod|hasPermission(config.mod.newboard) %}
 			<li style="margin-top:15px"><a href="?/new-board"><strong>{% trans 'Create new board' %}</strong></a></li>
 		{% endif %}
@@ -47,16 +47,16 @@
 									{% else %}
 										<em>{% trans 'no subject' %}</em>
 									{% endif %}
-								</a> 
+								</a>
 								<small class="unimportant">
-									&mdash; by 
+									&mdash; by
 									{% if post.username %}
 										{{ post.username|e }}
 									{% else %}
 										<em>deleted?</em>
-									{% endif %} 
-									at 
-									{{ post.time|date(config.post_date) }} 
+									{% endif %}
+									at
+									{{ post.time|date(config.post_date) }}
 								</small>
 							</li>
 						{% endfor %}
@@ -68,7 +68,7 @@
 		<li><a href="?/edit_news">{% trans 'News' %}</a></li>
 		<li>
 			<a href="?/inbox">
-				{% trans 'PM inbox' %} 
+				{% trans 'PM inbox' %}
 				{% if unread_pms > 0 %}<strong>{%endif %}({{ unread_pms }} unread){% if unread_pms > 0 %}</strong>{%endif %}
 			</a>
 		</li>
@@ -77,7 +77,7 @@
 
 <fieldset>
 	<legend>{% trans 'Administration' %}</legend>
-	
+
 	<ul>
 		{% if mod|hasPermission(config.mod.reports) %}
 			<li>
@@ -87,10 +87,21 @@
 			</li>
 		{% endif %}
 		{% if mod|hasPermission(config.mod.view_banlist) %}
-			<li><a href="?/bans">{% trans 'Ban list' %}</a></li>
+			<li><a href="?/bans">{% trans 'Ban List' %}</a></li>
+		{% endif %}
+		{% if mod|hasPermission(config.mod.view_banlist) %}
+			<li><a href="?/bans-full">{% trans 'Full Ban List' %}</a></li>
+		{% endif %}
+		{% if mod|hasPermission(config.mod.view_banlist) %}
+			<li><a href="?/whitelist">{% trans 'White list' %}</a></li>
 		{% endif %}
 		{% if config.ban_appeals and mod|hasPermission(config.mod.view_ban_appeals) %}
-			<li><a href="?/ban-appeals">{% trans 'Ban appeals' %}</a></li>
+			{% if appeals > 0 %}<strong>{% endif %}
+				<li><a href="?/ban-appeals">{% trans 'Ban appeals' %} ({{appeals}})</a></li>
+			{% if appeals > 0 %}</strong>{% endif %}
+		{% endif %}
+		{% if mod|hasPermission(config.mod.whitelist_tokens) %}
+			<li><a href="?/wl-tokens">{% trans 'Whitelist Tokens' %}</a></li>
 		{% endif %}
 		{% if mod|hasPermission(config.mod.manageusers) %}
 			<li><a href="?/users">{% trans 'Manage users' %}</a></li>
@@ -115,14 +126,14 @@
 		{% if mod|hasPermission(config.mod.edit_config) %}
 			<li><a href="?/config">{% trans 'Configuration' %}</a></li>
 		{% endif %}
-		
+
 	</ul>
 </fieldset>
 
 {% if mod|hasPermission(config.mod.search) %}
 	<fieldset>
 		<legend>{% trans 'Search' %}</legend>
-		
+
 		<ul>
 			<li>
 				{% include 'mod/search_form.html' %}
@@ -134,7 +145,7 @@
 {% if config.mod.dashboard_links and config.mod.dashboard_links|count %}
 	<fieldset>
 		<legend>{% trans 'Other' %}</legend>
-	
+
 		<ul>
 			{% for label,link in config.mod.dashboard_links %}
 				<li><a href="{{ link }}">{{ label }}</a></li>
@@ -161,8 +172,8 @@
 		<legend>Update</legend>
 		<ul>
 			<li>
-				A newer version of vichan 
-				(<strong>v{{ newer_release.massive }}.{{ newer_release.major }}.{{ newer_release.minor }}</strong>) is available! 
+				A newer version of vichan
+				(<strong>v{{ newer_release.massive }}.{{ newer_release.major }}.{{ newer_release.minor }}</strong>) is available!
 				See <a href="https://engine.vichan.net">https://engine.vichan.net/</a> for upgrade instructions.
 			</li>
 		</ul>
@@ -171,9 +182,8 @@
 
 <fieldset>
 	<legend>{% trans 'User account' %}</legend>
-	
+
 	<ul>
 		<li><a href="?/logout/{{ logout_token }}">{% trans 'Logout' %}</a></li>
 	</ul>
 </fieldset>
-

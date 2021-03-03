@@ -1,0 +1,17 @@
+<fieldset>
+  <legend>All Tokens</legend>
+  <table>
+		{% for token in wl_tokens %}
+    <tr>
+      <th>{{token.owner}}</th><td>{{token.id}}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</fieldset>
+<fieldset>
+  <legend>Actions</legend>
+  <form action="" method="POST">
+    <input type="text" placeholder="token-owner" /> <input type="submit" value="Create New Token" name="create" /><br/>
+    <input type="text" placeholder="token-id" /> <input type="submit" value="Revoke Token" name="revoke" />
+  </form>
+</fieldset>
