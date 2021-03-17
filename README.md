@@ -1,8 +1,7 @@
 ViQa-Kissu - An expanded lightweight and full featured PHP imageboard.
 ========================================================
 
-## This repo is a working directory and not intended for reuse. It's missing a good majority of files.
-### If interested in using this software for your own imageboard, a version should be around sometime between Christmas and early January on a release/master branch and tag.
+The public source code of kissu's vichan(post server) component. The API server and React server are not public. Ceratin files are hidden. For more detailed commit logs, see linked repository.  NPFChan adds functionality for deleting and maintaining order as well as the archive. Original: https://github.com/vichan-devel/vichan ; NPFChan Fork:  https://github.com/fallenPineapple/NPFchan
 
 About
 ------------
