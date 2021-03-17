@@ -61,12 +61,8 @@ Installation
 	default username and password combination: **admin / password**.
 
 Please remember to change the administrator account password.
-<<<<<<< HEAD
-See also: [Configuration Basics](https://web.archive.org/web/20121003095922/http://tinyboard.org/docs/?p=Config).
-=======
 
-See also: [Configuration Basics](https://github.com/vichan-devel/vichan/wiki/config).
->>>>>>> 3a41c24e6e5bcea2f4b9f328ddf5ff0cb8a8b2e8
+See also: [Configuration Basics](https://web.archive.org/web/20121003095922/http://tinyboard.org/docs/?p=Config).
 
 
 Upgrade
