@@ -55,7 +55,7 @@ if (isset($_POST['boardless-delete'])) {
 			$checked_boards[] = $d_board;
 		}
 		openBoard($d_board);
-		$query = prepare(sprintf("SELECT `id`,`thread`,`time`,`password` FROM ``posts_%s`` WHERE `id` = :id", $d_board));
+		$query = prepare(sprintf("SELECT `id`,`thread`,`time`,`password`,`ip` FROM ``posts_%s`` WHERE `id` = :id", $d_board));
 		$query->bindValue(':id', $id, PDO::PARAM_INT);
 		$query->execute() or error(db_error($query));
 
@@ -69,7 +69,7 @@ if (isset($_POST['boardless-delete'])) {
 				$thread = $thread_query->fetch(PDO::FETCH_ASSOC);
 			}
 
-			if (!$is_mod && $password != '' && $post['password'] != $password && (!$thread || $thread['password'] != $password))
+			if (!$is_mod && $password != '' && ($post['password'] != $password && $_SERVER["REMOTE_ADDR"] != $post['ip']) && (!$thread || $thread['password'] != $password))
 				error($config['error']['invalidpassword']);
 
 			if (!$is_mod &&$post['time'] > time() - $config['delete_time'] && (!$thread || $thread['password'] != $password)) {
@@ -175,7 +175,7 @@ else if (isset($_POST['delete'])) {
 		error($config['error']['nodelete']);
 
 	foreach ($delete as &$id) {
-		$query = prepare(sprintf("SELECT `id`,`thread`,`time`,`password` FROM ``posts_%s`` WHERE `id` = :id", $board['uri']));
+		$query = prepare(sprintf("SELECT `id`,`thread`,`time`,`password`,`ip` FROM ``posts_%s`` WHERE `id` = :id", $board['uri']));
 		$query->bindValue(':id', $id, PDO::PARAM_INT);
 		$query->execute() or error(db_error($query));
 
@@ -189,7 +189,7 @@ else if (isset($_POST['delete'])) {
 				$thread = $thread_query->fetch(PDO::FETCH_ASSOC);
 			}
 
-			if (!$is_mod && $password != '' && $post['password'] != $password && (!$thread || $thread['password'] != $password))
+			if (!$is_mod && $password != '' && ($post['password'] != $password  && $_SERVER["REMOTE_ADDR"] != $post['ip']) && (!$thread || $thread['password'] != $password))
 				error($config['error']['invalidpassword']);
 
 			if (!$is_mod &&$post['time'] > time() - $config['delete_time'] && (!$thread || $thread['password'] != $password)) {
@@ -476,12 +476,6 @@ elseif (isset($_POST['post']) || $dropped_post) {
 							error("Error: Field $num_opt blank");
 						}
 					}
-					if(preg_match('/^color\d+/', $key)){
-						if($value=="#000000"){
-							$_POST[$key] = '#' . dechex(mt_rand(0, 0xFFFFFF));
-
-						}
-					}
 				}
 			if($num_opt <= 1)
 				error("Error: Not enough options");
@@ -503,6 +497,7 @@ elseif (isset($_POST['post']) || $dropped_post) {
 		}
 	}
 	$wl_token_arr = $_POST['wl_token'];
+	$post['wl_token_valid'] = false;
 	foreach($wl_token_arr as $wl_token){
 		if(!trim($wl_token)){
 			$post['wl_token_valid'] = false;
@@ -940,8 +935,6 @@ elseif (isset($_POST['post']) || $dropped_post) {
 	}
 //modify body reference
 	$post['tracked_cites'] = markup($post['body'], true);
-	if($config['poll_board'] && !isset($post['thread']))
-		$post['body'] = Polling::bodyAddablePoll($post['poll_data']) . $post['body'];
 
 	if ($post['has_file']) {
 		$md5cmd = false;
@@ -1007,7 +1000,7 @@ elseif (isset($_POST['post']) || $dropped_post) {
 	if ($config['tesseract_ocr'] && !hasPermission($config['mod']['bypass_filters'], $board['uri']) && !$dropped_post) {
 		do_filters($post);
 	}
-
+		$post['email'] = preg_replace("/(noko|nonoko)/", "", strtolower($post['email']));
 
 	if (!hasPermission($config['mod']['postunoriginal'], $board['uri']) && $config['robot_enable'] && checkRobot($post['body_nomarkup']) && !$dropped_post) {
 		undoImage($post);
@@ -1046,7 +1039,24 @@ elseif (isset($_POST['post']) || $dropped_post) {
 				$hash = $output_arr[0];
 			}
 			if($hash && !verifyUnbannedHash($hash)){
+				undoImage($post);
 				error($config['error']['imagespam']);
+			}
+		}
+	}
+
+	// Move files to storage server
+	if ($post['has_file']) {
+		foreach ($post['files'] as $key => &$file) {
+			if( $file['size'] < $config['max_image_transfer_size'] ){
+				$success = reassignFileToServer($file);
+				if($success){
+					$file['location'] = "luna";
+				} else{
+					$file['location'] = "haiji";
+				}
+			} else{
+				$file['location'] = "haiji";
 			}
 		}
 	}
@@ -1182,11 +1192,15 @@ elseif(isset($_POST['release'])){
 	else $post['has_file'] = false;
 
 	$noko = false;
-	if (preg_match('/noko/', strtolower($post['email']))) {
-		$noko = true;
-	} elseif (preg_match('/nonoko/', strtolower($post['email']))){
+	if (preg_match('/nonoko/', strtolower($post['email']))){
 		$noko = false;
+		$post['email'] = preg_replace("/nonoko/", "", strtolower($post['email']));
+	} elseif (preg_match('/noko/', strtolower($post['email']))) {
+		$noko = true;
+		$post['email'] = preg_replace("/noko/", "", strtolower($post['email']));
 	} else $noko = $config['always_noko'];
+
+	$post['email'] = preg_replace("/(noko|nonoko)/", "", strtolower($post['email']));
 
 	$post['op'] = true;
 	if(isset($post['thread'])){
@@ -1298,6 +1312,19 @@ elseif(isset($_POST['release'])){
 	// 	flush();
 	// }
 	//
+
+	// Move files to storage server
+	if ($post['has_file']) {
+		foreach ($post['files'] as $key => &$file) {
+			if( $file['size'] < $config['max_image_transfer_size'] ){
+				reassignFileToServer($file);
+				$file['location'] = "luna";
+			} else{
+				$file['location'] = "artemis";
+			}
+		}
+	}
+
 	// // Hold post in place for captcha-queue
 	unset($post['time']);
 	CaptchaQueue::holdForQueue();
