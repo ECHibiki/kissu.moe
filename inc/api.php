@@ -49,6 +49,7 @@ class Api {
 			'height' => 'h',
 			'width' => 'w',
 			'size' => 'fsize',
+			'location' => 'location'
 		);
 
 		if (isset($config['api']['extra_fields']) && gettype($config['api']['extra_fields']) == 'array'){

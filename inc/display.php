@@ -55,13 +55,12 @@ function createBoardlist($mod=false) {
 		$boards[$val['uri']] = $val['title'];
 	}
 
-	$body = doBoardListPart($config['boards'], $mod?'?/':$config['root'], $boards);
+	$body = doBoardListPart($config['boards'], $mod?'?':"", $boards);
 
 	if ($config['boardlist_wrap_bracket'] && !preg_match('/\] $/', $body))
 		$body = '[' . $body . ']';
 
 	$body = trim($body);
-
 	// Message compact-boardlist.js faster, so that page looks less ugly during loading
 	$top = "<script type='text/javascript'>if (typeof do_boardlist != 'undefined') do_boardlist();</script>";
 
@@ -456,14 +455,14 @@ class Post {
 		global $config, $board;
 		$link = $this->root . $board['dir'] . $config['dir']['res'] . link_for((array)$this, $page == '50') ;
 		if($remove_ext)$link = preg_replace('/\\.[^.\\s]{3,4}$/', '', $link);
-		if(!$no_hash) $link  = $link . '#' . $pre . $this->id;
+		if(!$no_hash) $link  = $link . '#' .  $pre . $this->id;
 		return $link;
 	}
 
 	public function build($index=false) {
 		global $board, $config;
-
-		return Element('post_reply.html', array('config' => $config, 'board' => $board, 'post' => &$this, 'index' => $index, 'mod' => $this->mod));
+		return Element('post_reply.html', array('config' => $config, 'board' => $board, 'post' => &$this, 'index' => $index,
+		'mod' => $this->mod));
 	}
 };
 
@@ -507,12 +506,14 @@ class Thread {
 				'<a $1href="?/$4',
 				$this->body
 			);
+			if(isset($post['poll_body']))
+				$this->body = $post['poll_body'] . $this->body;
 	}
 	public function link($pre = '', $page = false, $remove_ext = false, $no_hash = false) {
 		global $config, $board;
 		$link = $this->root . $board['dir'] . $config['dir']['res'] . link_for((array)$this, $page == '50') ;
 		if($remove_ext)$link = preg_replace('/\\.[^.\\s]{3,4}$/', '', $link);
-		if(!$no_hash) $link  = $link . '#' . $pre . $this->id;
+		if(!$no_hash) $link  = $link . '#' .  $pre . $this->id;
 		return $link;
 	}
 	public function add(Post $post) {

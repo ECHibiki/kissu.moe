@@ -93,6 +93,9 @@ class Filter {
 				return preg_match($match, $post['subject']);
 			case 'body':
 				return preg_match($match, $post['body_nomarkup']);
+			case 'raw-body':
+			global $board;
+				return preg_match($match, $post['body']);
 			case 'strpos-list-match-body':
 				$match_found = false;
 				foreach($match as $single_match){
@@ -100,6 +103,15 @@ class Filter {
 						return $match_found;
 					}
 					$match_found = strpos($post['body_nomarkup'] , $single_match) !== false;
+				}
+				return $match_found;
+			case 'list-match-body':
+				$match_found = false;
+				foreach($match as $single_match){
+					if($match_found){
+						return $match_found;
+					}
+					$match_found = preg_match($single_match, $post['body_nomarkup']);
 				}
 				return $match_found;
 			case 'filehash':

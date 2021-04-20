@@ -169,9 +169,56 @@ function mod_dashboard() {
 			$args['newer_release'] = $latest;
 	}
 
+	$recent_count = 0;
+
 	$args['logout_token'] = make_secure_link_token('logout');
 
 	mod_page(_('Dashboard'), 'mod/dashboard.html', $args);
+}
+
+function mod_stats(){
+	global $config, $mod;
+	$subquery = [];
+	$args = [];
+	$args['boards'] = listBoards();
+
+	foreach($args['boards'] as $board){
+		$subquery[] = "select * from posts_" . $board['uri'] ;
+	}
+	$subquery_join = implode(" UNION " , $subquery);
+	$hourly_posts_query = sprintf("select count(*) from (%s) combined where time > UNIX_TIMESTAMP()-3600*1;", $subquery_join);
+	$daily_posts_query = sprintf("select count(*) from (%s) combined where time > UNIX_TIMESTAMP()-86400*1;", $subquery_join);
+	$weekly_posts_query = sprintf("select count(*) from (%s) combined where time > UNIX_TIMESTAMP()-86400*7;", $subquery_join);
+	$args["posts"] = [];
+
+
+	foreach($args['boards'] as $board){
+		$subquery[] = "select distinct(ip) from posts_" . $board['uri'] ;
+	}
+	$hourly_ip_query = sprintf("select count(distinct(ip)) from (%s) as combined where time > UNIX_TIMESTAMP()-3600*1", $subquery_join);
+	$daily_ip_query = sprintf("select count(distinct(ip)) from (%s) combined where time > UNIX_TIMESTAMP()-86400*1;", $subquery_join);
+	$weekly_ip_query = sprintf("select count(distinct(ip)) from (%s) combined where time > UNIX_TIMESTAMP()-86400*7;", $subquery_join);
+	$args["ip"] = [];
+
+	$q = query($hourly_posts_query) or error(db_error());
+	$args["posts"]["hour"] = $q->fetchColumn();
+	$q = query($daily_posts_query) or error(db_error());
+	$args["posts"]["day"] = $q->fetchColumn();
+	$q = query($weekly_posts_query) or error(db_error());
+	$args["posts"]["week"] = $q->fetchColumn();
+
+	$q = query($hourly_ip_query) or error(db_error());
+	$args["ip"]["hour"] = $q->fetchColumn();
+	$q = query($daily_ip_query) or error(db_error());
+	$args["ip"]["day"] = $q->fetchColumn();
+	$q = query($weekly_ip_query) or error(db_error());
+	$args["ip"]["week"] = $q->fetchColumn();
+
+	$args["ratio"]["hour"] = $args["ip"]["hour"] ? $args["posts"]["hour"] / $args["ip"]["hour"] : 0;
+	$args["ratio"]["day"] = $args["ip"]["day"] ? $args["posts"]["day"] / $args["ip"]["day"] : 0;
+	$args["ratio"]["week"] = $args["ip"]["week"] ? $args["posts"]["week"] / $args["ip"]["week"] : 0;
+
+	mod_page(_('Stats'), 'mod/stats.html', $args);
 }
 
 function mod_search_redirect() {
@@ -1368,7 +1415,7 @@ function mod_move_reply($originBoard, $postID) {
 		}
 
 		// copy() if leaving a shadow thread behind; else, rename().
-		$clone = $shadow ? 'copy' : 'rename';
+		$clone = $shadow ? 'multiServerCopy' : 'multiServerRename';
 
 		if ($post['files']) {
 			$post['files'] = json_decode($post['files'], TRUE);
@@ -1377,14 +1424,14 @@ function mod_move_reply($originBoard, $postID) {
 					if (isset($file['thumb'])){
 						if ($file['thumb'] != 'deleted') { //trying to move/copy the spoiler thumb raises an error
 							$new_file = sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'];
-							@$clone($file['file_path'], $new_file);
+							$clone($file['file_path'], $new_file, $file['location']);
 							$file['file_path'] = $new_file;
 							$file['file_id'] = 'm' . $file['file_id'];
 							$file['file'] = 'm' . $file['file'];
 						}
 						if($file['thumb'] != 'spoiler' && $file['thumb'] != 'file' && $file['thumb'] != 'deleted'){
 							$new_thumb = sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm'. $file['thumb'] ;
-							@$clone($file['thumb_path'], $new_thumb);
+							$clone($file['thumb_path'], $new_thumb, 'haiji');
 							$file['thumb_path'] = $new_thumb;
 							$file['thumb'] = 'm' . $file['thumb'];
 						}
@@ -1467,7 +1514,7 @@ function mod_move_reply($originBoard, $postID) {
 
 }
 
-function mod_nerf_move($originBoard, $postID, $redirect = true){
+function mod_nerf_move($originBoard, $postID, $redirect = true, $keep_order = false){
 global $board, $config, $mod, $pdo;
 
 	if (!openBoard($originBoard))
@@ -1490,7 +1537,7 @@ global $board, $config, $mod, $pdo;
 			error(_('Privilege level ' .$config['nerf_mods_max_level_number'] . " can not do this. You are " . $mod["type"]));
 
 		// copy() if leaving a shadow thread behind; else, rename().
-		$clone = $shadow ? 'copy' : 'rename';
+		$clone = $shadow ? 'multiServerCopy' : 'multiServerRename';
 
 
 		// indicate that the post is a thread
@@ -1500,13 +1547,13 @@ global $board, $config, $mod, $pdo;
 			$post['has_file'] = true;
 			foreach ($post['files'] as $i => &$file) {
 				if ($file['file'] !== 'deleted'){
-					@$clone($file['file_path'], sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file']);
+					$clone($file['file_path'], sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'] , $file['location']);
 					$file['file_path'] = sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'];
 					$file['file'] = 'm' . $file['file'];
 					$file['file_id'] = 'm' . $file['file_id'];
 				}
 				if($file['thumb'] !== 'spoiler'  && $file['thumb'] != 'file'  && $file['thumb'] != 'deleted'){
-					@$clone($file['thumb_path'],sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb']);
+					$clone($file['thumb_path'],sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb'] , 'haiji');
 					$file['thumb_path'] = sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb'];
 					$file['thumb'] =  'm' . $file['thumb'];
 				}
@@ -1635,14 +1682,14 @@ global $board, $config, $mod, $pdo;
 					if (isset($file['thumb'])){
 						if ($file['file'] != 'deleted' ) { //trying to move/copy the spoiler thumb raises an error
 							$new_file = sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'];
-							@$clone($file['file_path'], $new_file);
+							$clone($file['file_path'], $new_file , $file['location']);
 							$file['file_path'] = $new_file;
 							$file['file_id'] = 'm' . $file['file_id'];
 							$file['file'] = 'm' . $file['file'];
 						}
 						if($file['thumb'] != 'spoiler'  && $file['thumb'] != 'file'  && $file['thumb'] != 'deleted'){
 							$new_thumb = sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm'. $file['thumb'] ;
-							@$clone($file['thumb_path'], $new_thumb);
+							$clone($file['thumb_path'], $new_thumb, 'haiji');
 							$file['thumb_path'] = $new_thumb;
 							$file['thumb'] = 'm' . $file['thumb'];
 						}
@@ -1694,7 +1741,7 @@ global $board, $config, $mod, $pdo;
 		// return to original board
 		openBoard($originBoard);
 
-		deletePost($postID, true, true, false, true);
+		deletePost($postID, true, true, false, true, $keep_order);
 
 		buildIndex();
 
@@ -1746,7 +1793,7 @@ function mod_move($originBoard, $postID) {
 			error(_('Target and source board are the same.'));
 
 		// copy() if leaving a shadow thread behind; else, rename().
-		$clone = $shadow ? 'copy' : 'rename';
+		$clone = $shadow ? 'multiServerCopy' : 'multiServerRename';
 
 		if ($_POST['target_thread']) {
 			$query = prepare(sprintf('SELECT * FROM ``posts_%s`` WHERE `id` = :id', $targetBoard));
@@ -1770,13 +1817,13 @@ function mod_move($originBoard, $postID) {
 			foreach ($post['files'] as $i => &$file) {
 				if(isset($file['thumb'])){
 					if ($file['thumb'] !== 'deleted' ) {
-						@$clone($file['file_path'], sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file']);
+						$clone($file['file_path'], sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'] , $file['location']);
 						$file['file_path'] = sprintf($config['board_path'], $targetBoard) . $config['dir']['img'] . 'm' . $file['file'];
 						$file['file'] = 'm' . $file['file'];
 						$file['file_id'] = 'm' .$file['file_id'];
 					}
 					if($file['thumb'] !== 'spoiler'  && $file['thumb'] != 'file'  && $file['thumb'] != 'deleted'){
-						@$clone($file['thumb_path'],sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb']);
+						$clone($file['thumb_path'],sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb'] , 'haiji');
 						$file['thumb_path'] = sprintf($config['board_path'], $targetBoard) . $config['dir']['thumb'] . 'm' . $file['thumb'];
 						$file['thumb'] =  'm' . $file['thumb'];
 					}
@@ -1880,14 +1927,14 @@ function mod_move($originBoard, $postID) {
 					if (isset($file['thumb'])){
 						if ($file['thumb'] != 'deleted' ) { //trying to move/copy the spoiler thumb raises an error
 							$new_file = sprintf($config['board_path'], $board['uri']) . $config['dir']['img'] . 'm' . $file['file'];
-							@$clone($file['file_path'], $new_file);
+							$clone($file['file_path'], $new_file , $file['location']);
 							$file['file_path'] = $new_file;
 							$file['file_id'] = 'm' . $file['file_id'];
 							$file['file'] = 'm' . $file['file'];
 						}
 						if($file['thumb'] != 'spoiler'  && $file['thumb'] != 'file'  && $file['thumb'] != 'deleted'){
 							$new_thumb = sprintf($config['board_path'], $board['uri']) . $config['dir']['thumb'] . 'm'. $file['thumb'] ;
-							@$clone($file['thumb_path'], $new_thumb);
+							$clone($file['thumb_path'], $new_thumb , 'haiji');
 							$file['thumb_path'] = $new_thumb;
 							$file['thumb'] = 'm' . $file['thumb'];
 						}
@@ -2217,12 +2264,12 @@ function mod_edit_post($board, $edit_raw_html, $postID) {
 	}
 }
 
-function nerf_mod_check($board, $postID, $redirect = true){
+function nerf_mod_check($board, $postID, $redirect = true, $keep_order = false){
 	global $mod, $config;
 	if (!openBoard($board))
 		error($config['error']['noboard']);
 	if($config['nerf_mods'] && $mod['type'] <= $config['nerf_mods_max_level_number']){
-		mod_nerf_move($board, $postID, $redirect);
+		mod_nerf_move($board, $postID, $redirect, $keep_order);
 		return true;
 	}else{
 		return false;
@@ -2269,7 +2316,7 @@ function mod_delete($board, $post, $redirect_on_nerf=true) {
 
 function mod_delete_keeporder($board, $post) {
 	global $config, $mod;
-	if(nerf_mod_check($board, $post))
+	if(nerf_mod_check($board, $post, true, true))
 		return;
 	if (!openBoard($board))
 		error($config['error']['noboard']);
@@ -2278,7 +2325,7 @@ function mod_delete_keeporder($board, $post) {
 		error($config['error']['noaccess']);
 
 	// Delete post (get thread id)
-	$thread_id = deletePostKeepOrder($post, true, true, false, true);
+	$thread_id = deletePost($post, true, true, false, true, true);
 	// Record the action
 	modLog("Deleted post (KO) #{$post}");
 	// Rebuild board
@@ -2347,12 +2394,26 @@ function mod_spoiler_image($board, $fn_str = "spoiler", $post, $file) {
 	$files = json_decode($result['files']);
 
 
-	$size_spoiler_image = @getimagesize($config['spoiler_image']);
+	$size_spoiler_image = @getimagesize($fn_str == "spoiler" ? $config['spoiler_image'] : $config['nsfw_image']);
+	$thumbwidth = $size_spoiler_image[0];
+	$thumbheight = $size_spoiler_image[1];
+	if(!!$result['thread']){
+		if($thumbwidth > $config["thumb_width"]){
+			$ratio =  $config["thumb_width"] / $thumbwidth;
+			$thumbwidth *= $ratio;
+			$thumbheight *= $ratio;
+		} else if($thumbheight > $config["thumb_height"]){
+			$ratio =  $config["thumb_height"] / $thumbheight;
+			$thumbwidth *= $ratio;
+			$thumbheight *= $ratio;
+		}
+	}
+
 	file_unlink($board . '/' . $config['dir']['thumb'] . $files[$file]->thumb);
 	$files[$file]->thumb = 'spoiler';
 	$files[$file]->thumb_path = str_replace("/", "\\/", $fn_str == "spoiler" ? $config['spoiler_image'] : $config['nsfw_image']);
-	$files[$file]->thumbwidth = $size_spoiler_image[0];
-	$files[$file]->thumbheight = $size_spoiler_image[1];
+	$files[$file]->thumbwidth = round($thumbwidth);
+	$files[$file]->thumbheight = round($thumbheight);
 
 	// Make thumbnail spoiler
 	$query = prepare(sprintf("UPDATE ``posts_%s`` SET `files` = :files WHERE `id` = :id", $board));
@@ -2399,9 +2460,11 @@ function mod_unspoiler_image($board, $fn_str = "spoiler", $post, $file){
 	$result = $query->fetch(PDO::FETCH_ASSOC);
 	$files = json_decode($result['files']);
 	if($files[0]->extension == "webm" || $files[0]->extension == "mp4"){
-		$files[0] = Post_ImageProcessing::createWebmThumbnail($files[0], !!$result['thread']);
+		$files[0] = Post_ImageProcessing::createWebmThumbnail($files[0], !$result['thread']);
+		$files[0]->thumb = $files[0]->file_id . ".png";
+
 	} else{
-		$files[0] = Post_ImageProcessing::createThumbnail($files[0], !!$result['thread']);
+		$files[0] = Post_ImageProcessing::createThumbnail($files[0], !$result['thread']);
 	}
 	$query = prepare(sprintf("UPDATE ``posts_%s`` SET `files` = :files WHERE `id` = :id", $board));
 	$query->bindValue(':files', json_encode($files));
@@ -3533,7 +3596,7 @@ function mod_edit_page($id) {
 		$content = $query->fetchColumn();
 	}
 
-	mod_page(sprintf(_('Editing static page: %s'), $page['name']), 'mod/edit_page.html', array('page' => $page, 'token' => make_secure_link_token("edit_page/$id"), 'content' => prettify_textarea($content), 'board' => $board));
+	mod_page(sprintf(_('Editing static page: %s'), $page['name']), 'mod/edit_page.html', array('page' => $page, 'token' => make_secure_link_token("edit_page/$id"), 'content' => ($content), 'board' => $board));
 }
 
 function mod_pages($board = false) {

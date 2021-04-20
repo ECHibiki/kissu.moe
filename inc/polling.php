@@ -155,26 +155,38 @@
 							array_push($poll_obj->options, $value);
 						}
 						if(preg_match('/^color\d+/', $key)){
-							array_push($poll_obj->colors, $value);
+							if($value=="#000000"){
+								$_POST[$key] =
+								array_push($poll_obj->colors, sprintf('#%06X', mt_rand(0, 0xFFFFFF)));
+							} else{
+								array_push($poll_obj->colors, $value);
+							}
 						}
+				 }
+				 while(count($poll_obj->options) > count($poll_obj->colors)){
+					 array_push($poll_obj->colors , sprintf("#%06X", mt_rand(0,0xFFFFFF)));
 				 }
 				return json_encode($poll_obj);
 			}
 			else
 				return null;
 		}
-		static function bodyAddablePoll($poll_json){
-			$poll_obj = json_decode($poll_json, true);
-			$time = time();
+		static function bodyAddablePoll($options, $multisel, $created_at, $expires){
 			$input_selection = "";
 			$type = "";
-			if($poll_obj['multisel'] == 'on')
+			if($multisel)
 				$type = "checkbox";
 			else
 				$type = "radio";
-			foreach($poll_obj['options'] as $index=>$option)
+
+			$lifespan = ($expires - $created_at) / (24 * 60 * 60);
+
+			$options = json_decode($options, true);
+			foreach($options as $index=>$option){
 				$input_selection .= "<label><input type='$type' name='pollopt[]' value='$index'/>$option</label><br/>";
-			$form = "<div data-lifespan='$poll_obj[lifespan]' data-creationtime='$time' class='pollform'>$input_selection<input type='submit' class='pollsubmit' onclick='return pollSubmit(this)' value='Cast Vote'><a href='javascript:void(0)' onclick='return viewPoll(this)'><br/>[View Responses]</a></div><br/>";
+			}
+
+			$form = "<div data-lifespan='$lifespan' data-creationtime='$created_at' class='pollform'>$input_selection<input type='submit' class='pollsubmit' onclick='return pollSubmit(this)' value='Cast Vote'><a href='javascript:void(0)' onclick='return viewPoll(this)'><br/>[View Responses]</a></div><br/>";
 
 			return $form;
 

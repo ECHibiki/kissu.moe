@@ -865,47 +865,44 @@ function ago($timestamp) {
 	}
 }
 
-// soft defines "do not see" and "do not delete" behaviour
-function displayBan($ban, $soft=false) {
+// evasion for ban evasion
+function displayBan($ban, $evasion=false) {
 	global $config, $board;
-
-	if (!$soft && !$ban['seen']) {
-		Bans::seen($ban['id']);
-	}
-
-	setcookie("banned", $ban['id']);
-
-	$ban['ip'] = $_SERVER['REMOTE_ADDR'];
-
-	if ($ban['post'] && isset($ban['post']['board'], $ban['post']['id'])) {
-		if (openBoard($ban['post']['board'])) {
-			$query = query(sprintf("SELECT `files` FROM ``posts_%s`` WHERE `id` = " .
-				(int)$ban['post']['id'], $board['uri']));
-			if ($_post = $query->fetch(PDO::FETCH_ASSOC)) {
-				$ban['post'] = array_merge($ban['post'], $_post);
-			}
-		}
-		if ($ban['post']['thread']) {
-			$post = new Post($ban['post']);
-		} else {
-			$post = new Thread($ban['post'], null, false, false);
-		}
-	}
 
 	$denied_appeals = array();
 	$pending_appeal = false;
+	if(!$evasion){
+		if (!$ban['seen']) {
+			Bans::seen($ban['id']);
+		}
+		$ban['ip'] = $_SERVER['REMOTE_ADDR'];
 
-	if ($config['ban_appeals']) {
-		$query = query("SELECT `time`, `denied`, `denial_reason` FROM ``ban_appeals`` WHERE `ban_id` = " . (int)$ban['id']) or error(db_error());
-		while ($ban_appeal = $query->fetch(PDO::FETCH_ASSOC)) {
-			if ($ban_appeal['denied']) {
-				$denied_appeals[] = ['time' => $ban_appeal['time'], 'reason' => $ban_appeal['denial_reason']];
+		if ($ban['post'] && isset($ban['post']['board'], $ban['post']['id'])) {
+			if (openBoard($ban['post']['board'])) {
+				$query = query(sprintf("SELECT `files` FROM ``posts_%s`` WHERE `id` = " .
+					(int)$ban['post']['id'], $board['uri']));
+				if ($_post = $query->fetch(PDO::FETCH_ASSOC)) {
+					$ban['post'] = array_merge($ban['post'], $_post);
+				}
+			}
+			if ($ban['post']['thread']) {
+				$post = new Post($ban['post']);
 			} else {
-				$pending_appeal = $ban_appeal['time'];
+				$post = new Thread($ban['post'], null, false, false);
+			}
+		}
+
+		if ($config['ban_appeals']) {
+			$query = query("SELECT `time`, `denied`, `denial_reason` FROM ``ban_appeals`` WHERE `ban_id` = " . (int)$ban['id']) or error(db_error());
+			while ($ban_appeal = $query->fetch(PDO::FETCH_ASSOC)) {
+				if ($ban_appeal['denied']) {
+					$denied_appeals[] = ['time' => $ban_appeal['time'], 'reason' => $ban_appeal['denial_reason']];
+				} else {
+					$pending_appeal = $ban_appeal['time'];
+				}
 			}
 		}
 	}
-
 	// Show banned page and exit
 	die(
 		Element('page.html', array(
@@ -919,7 +916,7 @@ function displayBan($ban, $soft=false) {
 				'post' => isset($post) ? $post->build(true) : false,
 				'denied_appeals' => $denied_appeals,
 				'pending_appeal' => $pending_appeal,
-				'cookie_mode' => $soft
+				'cookie_mode' => $evasion
 			)
 		))
 	));
@@ -987,28 +984,7 @@ function checkBan($board = false, $bypass_range=false) {
 	foreach ($ips as $ip) {
 		$bans = Bans::find($_SERVER['REMOTE_ADDR'], $board, $config['show_modname']);
 		// a cookie ban is done when bans has no items and banned cookie is set
-		$target_ban = false;
-		if(count($bans) == 0 && isset($_COOKIE['banned'])){
-			$target_ban = Bans::findID($_COOKIE['banned'], $board, $config['show_modname']);
-			foreach($whitelist_items as &$white){
-				if($target_ban["reason"] && preg_match($white["exemption_regex"], $target_ban["reason"]) == 1){
-					$target_ban = false;
-					break;
-				}
-			}
-			if(!$target_ban){
-				setcookie("banned", "", time()-3600);
-			}
-		}
-		if($target_ban){
-			// when target_ban is used a ban will neither be seen nor appealable
-			if (!isset($_POST['json_response'])) {
-				displayBan($target_ban, true);
-			} else {
-				header('Content-Type: text/json');
-				die(json_encode(array('error' => true, 'banned' => true)));
-			}
-		}
+
 		foreach ($bans as &$ban) {
 			if ($ban['expires'] && $ban['expires'] < time()) {
 				if ($config['require_ban_view'] && !$ban['seen']) {
@@ -1032,6 +1008,10 @@ function checkBan($board = false, $bypass_range=false) {
 				if($whitelisted){
 					continue;
 				}
+
+				if($ban['creator'] != -1 && !$ban['seen'] && time() <  $ban['created'] + $config['ban_evasion_cookie_time']){
+					setcookie("banned", $ban['id']);
+				}
 				if (!isset($_POST['json_response'])) {
 					displayBan($ban);
 				} else {
@@ -1039,6 +1019,36 @@ function checkBan($board = false, $bypass_range=false) {
 					die(json_encode(array('error' => true, 'banned' => true)));
 				}
 			}
+		}
+	}
+
+	if(isset($_COOKIE['banned'])){
+			$target_ban = Bans::findID($_COOKIE['banned'], $board, $config['show_modname']);
+			foreach($whitelist_items as &$white){
+				if($target_ban["reason"] && preg_match($white["exemption_regex"], $target_ban["reason"]) == 1){
+					$target_ban = false;
+					break;
+				}
+			}
+			if(!$target_ban){
+				//clear cookie
+				setcookie("banned", null, -1);
+			} else{
+				// when evading a ban will neither be seen nor appealable
+				if (!isset($_POST['json_response'])) {
+					displayBan(
+						[
+							"id"=>0,
+							"expires"=>0,
+							"board"=>0,
+							"seen"=>1,
+							"reason"=>"Ban Evasion"
+						]
+						, true);
+				} else {
+					header('Content-Type: text/json');
+					die(json_encode(array('error' => true, 'banned' => true)));
+				}
 		}
 	}
 
@@ -1054,6 +1064,123 @@ function checkBan($board = false, $bypass_range=false) {
 		cache::set('purged_bans_last', time());
 }
 
+
+function FTPSLogin(){
+	global $config;
+	$site = $config["storage_server_addr"];
+	$user = $config["storage_server_user"];
+	$port = $config["storage_server_port"];
+	$root_dir = $config["storage_server_root_directory"];
+	$pass = file_get_contents("../../store/.remote_password");
+
+	$ftps = ftp_ssl_connect ( $site, $port );
+	// login with username and password
+	$logged_in = ftp_login($ftps, $user, $pass);
+	if (!$logged_in) {
+			// PHP will already have raised an E_WARNING level message in this case
+			die("can't login");
+	}
+	return $ftps;
+}
+
+function SFTPLogin(){
+	global $config;
+	$site = $config["storage_server_addr"];
+	$user = $config["storage_server_user"];
+	$port = $config["storage_server_port"];
+	$root_dir = $config["storage_server_root_directory"];
+	$pass = file_get_contents("../../store/.remote_password");
+	$connection = ssh2_connect($site, $port);
+	ssh2_auth_password($connection, $user, $pass);
+	$sftp = ssh2_sftp($connection);
+	ftp_pasv($ftps, false);
+	return $sftp;
+}
+
+function multiServerCopy($source, $destination, $location){
+	if($location == "luna"){
+		copyRemoteFile($source, $desitination);
+	} else{
+		copy($source, $destination);
+	}
+}
+function multiServerRename($source, $new_name, $location){
+	if($location == "luna"){
+		renameRemoteFile($source, $new_name);
+	} else{
+		rename($source, $new_name);
+	}
+}
+
+
+function deleteRemoteFile($file){
+	global $config;
+	$type = $config["storage_server_connection"];
+	$root_dir = $config["storage_server_root_directory"];
+	if($type == "SFTP"){
+		$sftp = SFTPLogin();
+		ssh2_sftp_unlink($sftp, $root_dir . $file->file_path);
+	} else{
+		$ftps =  FTPSLogin();
+		ftp_delete($ftps , $root_dir . $file->file_path);
+	}
+	// at this point in time the file at file_path on the server should be removed
+}
+
+function renameRemoteFile($source, $desitination){
+	global $config;
+	$type = $config["storage_server_connection"];
+	if($type == "SFTP"){
+		$sftp = SFTPLogin();
+		ssh2_sftp_rename($sftp, $source , $desitination);
+	} else{
+		$ftps =  FTPSLogin();
+		ftp_rename($ftps, $source , $desitination);
+	}
+	// at this point in time the file at file_path on the server should be moved
+
+}
+
+function copyRemoteFile($source, $desitination){
+	global $config;
+	$type = $config["storage_server_connection"];
+	$root_dir = $config["storage_server_root_directory"];
+
+	if($type == "SFTP"){
+		$sftp = SFTPLogin();
+		ssh2_sftp_copy($sftp, "cp $root_dir$source $root_dir$desitination");
+	} else{
+		$ftps =  FTPSLogin();
+		ftp_pasv($ftps, true);
+		ftp_exec($ftps , "cp $root_dir$source $root_dir$desitination");
+	}
+	// at this point in time the file at file_path on the server should be copied
+}
+//SFTP is stupidly slow, switch to FTPS with ftp_ssl_connect
+function reassignFileToServer($file){
+	global $config;
+	$type = $config["storage_server_connection"];
+	$root_dir = $config["storage_server_root_directory"];
+
+	if($type == "SFTP"){
+		$sftp = SFTPLogin();
+		$stream = fopen("ssh2.sftp://$sftp" . $root_dir . $file['file_path'] , 'wb');
+		$source = file_get_contents($file['file_path']);
+		$success = fwrite($stream, $source, strlen($source));
+		fclose($stream);
+	} else{
+		$ftps =  FTPSLogin();
+		$source_file_handle = fopen($file['file_path'] , 'rb');
+		ftp_pasv($ftps, true);
+		$success = ftp_fput($ftps , $root_dir . $file['file_path'] , $source_file_handle);
+	}
+	if($success){
+		unlink($file['file_path']);
+	}
+	// at this point in time there should be a file of file_path on the server in location file_path
+	return $success;
+}
+
 function react_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$pdo){
 
 			require_once 'inc/anti-bot.php';
@@ -1062,9 +1189,10 @@ function react_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$
 
 
 		global $config, $board, $build_pages;
+
 		//POST IS DONE HERE
-	        $post['id'] = $id = post($post);
-	        $post['slug'] = slugify($post);
+    $post['id'] = $id = post($post);
+    $post['slug'] = slugify($post);
 
 		if(isset($post['poll_data']) && $post['poll_data'] != ""){
 		// Assuming it's a new poll insert poll data here from new file polling.php
@@ -1133,7 +1261,7 @@ function react_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$
 	//TODO: Bonus add nonoko
 		if ($noko) {
 			$redirect = $root . $board['dir'] . $config['dir']['res'] .
-				link_for($post, false, false, $thread) . (!$post['op'] ? '#' . $id : '');
+				link_for($post, false, false, $thread) . (!$post['op'] ? '#' .$id : '');
 
 			if (!$post['op'] && isset($_SERVER['HTTP_REFERER'])) {
 				$regex = array(
@@ -1146,7 +1274,7 @@ function react_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$
 
 				if (preg_match('/\/' . $regex['board'] . $regex['res'] . $regex['page50'] . '([?&].*)?$/', $_SERVER['HTTP_REFERER'])) {
 					$redirect = $root . $board['dir'] . $config['dir']['res'] .
-						link_for($post, true, false, $thread) . (!$post['op'] ? '#' . $id : '');
+						link_for($post, true, false, $thread) . (!$post['op'] ? '#' .$id : '');
 				}
 			}
 		} else {
@@ -1161,7 +1289,7 @@ function react_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$
 
 		if ($config['syslog'])
 			_syslog(LOG_INFO, 'New post: /' . $board['dir'] . $config['dir']['res'] .
-				link_for($post) . (!$post['op'] ? '#' . $id : ''));
+				link_for($post) . (!$post['op'] ? '#' .$id : ''));
 
 		header('Content-Type: text/json; charset=utf-8');
 		echo json_encode(array(
@@ -1350,7 +1478,7 @@ function post_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$p
 //TODO: Bonus add nonoko
 	if ($noko) {
 		$redirect = $root . $board['dir'] . $config['dir']['res'] .
-			link_for($post, false, false, $thread) . (!$post['op'] ? '#' . $id : '');
+			link_for($post, false, false, $thread) . (!$post['op'] ? '#' .$id : '');
 
 		if (!$post['op'] && isset($_SERVER['HTTP_REFERER'])) {
 			$regex = array(
@@ -1379,7 +1507,7 @@ function post_laterPost(&$post, &$thread, $numposts, &$noko, &$dropped_post, &$p
 
 	if ($config['syslog'])
 		_syslog(LOG_INFO, 'New post: /' . $board['dir'] . $config['dir']['res'] .
-			link_for($post) . (!$post['op'] ? '#' . $id : ''));
+			link_for($post) . (!$post['op'] ? '#' .$id : ''));
 
 	if (!$post['mod']) header('X-Associated-Content: "' . $redirect . '"');
 
@@ -1641,6 +1769,9 @@ function deleteFile($id, $remove_entirely_if_already=true, $file=null) {
 		foreach ($files as $i => $f) {
 			if (($file !== false && $i == $file) || $file === null) {
 				// Delete thumbnail
+				if(property_exists($f, "location") && $f->location == "luna"){
+					deleteRemoteFile($f);
+				}
 				if (isset ($f->thumb) && $f->thumb && $f->thumb != "spoiler" && $f->thumb != "deleted") {
 					file_unlink($board['dir'] . $config['dir']['thumb'] . $f->thumb);
 					unset($files[$i]->thumb);
@@ -1718,99 +1849,9 @@ function rebuildPost($id) {
 	return true;
 }
 
-// Delete a post (reply or thread) and do not update bump order. original  8b46905ea9
-function deletePostKeepOrder($id, $error_if_doesnt_exist=true, $rebuild_after=true, $store_image = false, $catalog_unbalancing_delete = false) {
-	global $board, $config;
-	// Select post and replies (if thread) in one query
-
-	$query = prepare(sprintf("SELECT `id`,`thread`,`files`,`slug` FROM ``posts_%s`` WHERE `id` = :id OR `thread` = :id", $board['uri']));
-	$query->bindValue(':id', $id, PDO::PARAM_INT);
-	$query->execute() or error(db_error($query));
-
-	if ($query->rowCount() < 1) {
-		if ($error_if_doesnt_exist)
-			error($config['error']['invalidpost']);
-		else return false;
-	}
-	$ids = array();
-	// Delete posts and maybe replies
-	while ($post = $query->fetch(PDO::FETCH_ASSOC)) {
-		event('delete', $post);
-
-		if (!$post['thread']) {
-			// Delete thread HTML page
-			@file_unlink($board['dir'] . $config['dir']['res'] . link_for($post) );
-			@file_unlink($board['dir'] . $config['dir']['res'] . link_for($post, true) ); // noko50
-			@file_unlink($board['dir'] . $config['dir']['res'] . sprintf('%d.json', $post['id']));
-			Hazuki::deleteThread($post['id'], $board["uri"]);
-			$antispam_query = prepare('DELETE FROM ``antispam`` WHERE `board` = :board AND `thread` = :thread');
-			$antispam_query->bindValue(':board', $board['uri']);
-			$antispam_query->bindValue(':thread', $post['id']);
-			$antispam_query->execute() or error(db_error($antispam_query));
-		} elseif ($query->rowCount() == 1) {
-			// Rebuild thread
-			$rebuild = &$post['thread'];
-		}
-		if ($post['files']) {
-			// Delete file
-			foreach (json_decode($post['files']) as $i => $f) {
-				if (!strpos($f->file, 'deleted')) {
-					@file_unlink($board['dir'] . $config['dir']['img'] . $f->file);
-					@file_unlink($board['dir'] . $config['dir']['thumb'] . $f->thumb);
-				}
-			}
-		}
-		$ids[] = (int)$post['id'];
-	}
-	$query = prepare(sprintf("DELETE FROM ``posts_%s`` WHERE `id` = :id OR `thread` = :id", $board['uri']));
-	$query->bindValue(':id', $id, PDO::PARAM_INT);
-	$query->execute() or error(db_error($query));
-
-	$query = prepare("SELECT `board`, `post` FROM ``cites`` WHERE `target_board` = :board AND (`target` = " . implode(' OR `target` = ', $ids) . ") ORDER BY `board`");
-	$query->bindValue(':board', $board['uri']);
-	$query->execute() or error(db_error($query));
-
-	$d_query = prepare("DELETE FROM ``cites`` WHERE (`target_board` = :board AND (`target` = " . implode(' OR `target` = ', $ids) . ")) OR (`board` = :board AND (`post` = " . implode(' OR `post` = ', $ids) . "))");
-	$d_query->bindValue(':board', $board['uri']);
-	$d_query->execute() or error(db_error($d_query));
-
-	$true_board = $board['uri'];
-	while ($cite = $query->fetch(PDO::FETCH_ASSOC)) {
-		if ($board['uri'] != $cite['board']) {
-			openBoard($cite['board']);
-		}
-		rebuildPost($cite['post']);
-	}
-	openBoard($true_board);
-
-	if($authoritative_delete){
-		if($config["poll_board"]){
-			//remove poll if exists,
-			Polling::removePoll($id);
-		}
-		Scoring::delete($id);
-		if(!isset($thread_id)){
-			$restored_thread = Archive::restoreNewestItem();
-			if($restored_thread){
-				buildThread($restored_thread);
-				Hazuki::rebuildCatalog($board["uri"]);
-				Hazuki::rebuildOverboard();
-			}
-		}
-	}
-
-	if (isset($rebuild) && $rebuild_after) {
-		buildThread($rebuild);
-		Hazuki::rebuildCatalog($board["uri"]);
-		Hazuki::rebuildOverboard();
-	}
-	return true;
-}
-
 // Delete a post (reply or thread) and update bump order
-function deletePost($id, $error_if_doesnt_exist=true, $rebuild_after=true, $store_image = false, $authoritative_delete = false) {
+function deletePost($id, $error_if_doesnt_exist=true, $rebuild_after=true, $store_image = false, $authoritative_delete = false, $keep_order = false) {
 	global $board, $config;
-
 
 	// Select post and replies (if thread) in one query
 	$query = prepare(sprintf("SELECT `id`,`thread`,`files`,`slug` FROM ``posts_%s`` WHERE `id` = :id OR `thread` = :id", $board['uri']));
@@ -1845,11 +1886,15 @@ function deletePost($id, $error_if_doesnt_exist=true, $rebuild_after=true, $stor
 		}
 		if ($post['files'] && !$store_image) {
 			// Delete file
-		if(json_decode($post['files']))
-			foreach (json_decode($post['files']) as $i => $f) {
-				if (!strpos($f->file, 'deleted')) {
-					@file_unlink($board['dir'] . $config['dir']['img'] . $f->file);
-					@file_unlink($board['dir'] . $config['dir']['thumb'] . $f->thumb);
+			if(json_decode($post['files'])){
+				foreach (json_decode($post['files']) as $i => $f) {
+					if(property_exists($f, "location") && $f->location == "luna"){
+						deleteRemoteFile($f);
+					}
+					if (!strpos($f->file, 'deleted')) {
+						@file_unlink($board['dir'] . $config['dir']['img'] . $f->file);
+						@file_unlink($board['dir'] . $config['dir']['thumb'] . $f->thumb);
+					}
 				}
 			}
 		}
@@ -1873,20 +1918,20 @@ function deletePost($id, $error_if_doesnt_exist=true, $rebuild_after=true, $stor
 	$query->execute() or error(db_error($query));
 
 	// Update bump order
-	if (isset($thread_id) && $reply_count < $config['reply_limit'])
+	if (!$keep_order && isset($thread_id) && $reply_count < $config['reply_limit'])
 	{
 		$query = prepare(sprintf('SELECT MAX(`time`) AS `correct_bump` FROM `posts_%s`
-		                          WHERE (`thread` = :thread AND NOT email <=> "sage")
-		                          OR `id` = :thread', $board['uri']));
+		WHERE (`thread` = :thread AND NOT email <=> "sage")
+		OR `id` = :thread', $board['uri']));
 		$query->bindValue(':thread', $thread_id, PDO::PARAM_INT);
 		$query->execute() or error(db_error($query));
 		$correct_bump = $query->fetch(PDO::FETCH_ASSOC)['correct_bump'];
 
 		$query = prepare(sprintf("UPDATE ``posts_%s`` SET `bump` = :bump
-		                          WHERE `id` = :id", $board['uri']));
-		$query->bindValue(':bump', $correct_bump, PDO::PARAM_INT);
-		$query->bindValue(':id', $thread_id, PDO::PARAM_INT);
-		$query->execute() or error(db_error($query));
+			WHERE `id` = :id", $board['uri']));
+			$query->bindValue(':bump', $correct_bump, PDO::PARAM_INT);
+			$query->bindValue(':id', $thread_id, PDO::PARAM_INT);
+			$query->execute() or error(db_error($query));
 	}
 
 	$query = prepare("SELECT `board`, `post` FROM ``cites`` WHERE `target_board` = :board AND (`target` = " . implode(' OR `target` = ', $ids) . ") ORDER BY `board`");
@@ -2035,6 +2080,16 @@ function index($page, $mod=false, $brief = false) {
 	$threads = array();
 
 	while ($th = $query->fetch(PDO::FETCH_ASSOC)) {
+		if($config["poll_board"] && !$th["thread"]){
+			$poll_query = prepare("SELECT * FROM ``poll`` WHERE `id` = :id AND `board` = :board");
+			$poll_query->bindValue(':id', $th["id"], PDO::PARAM_INT);
+			$poll_query->bindValue(':board', $board["uri"]);
+			$poll_query->execute() or error(db_error($poll_query));
+			$poll_col = $poll_query->fetch(PDO::FETCH_ASSOC);
+			if($poll_col){
+				$th["poll_body"] = Polling::bodyAddablePoll($poll_col["questionaire_json"], intval($poll_col["mutliple_choice"]),$poll_col["created"], $poll_col["expires"]);
+			}
+		}
 		$thread = new Thread($th, $mod ? '?/' : $config['root'], $mod);
 
 		if ($config['cache']['enabled']) {
@@ -2675,7 +2730,7 @@ function markup(&$body, $track_cites = false, $op = false) {
 		$markup_urls = array();
 
 		$body = preg_replace_callback(
-				'/((?:https?:\/\/|ftp:\/\/|irc:\/\/)[^\s<>()"]+?(?:\([^\s<>()"]*?\)[^\s<>()"]*?)*)((?:\s|<|>|"|\.||\]|!|\?|,|&#44;|&quot;)*(?:[\s<>()"]|$))/',
+				'/((?:https?:\/\/|ftp:\/\/|irc:\/\/)[^\s<>()"]+?(?:\([^\s<>()"]*?\)[^\s<>()"]*?)*)((?:\s|<|>|"|\.||\]|!|\?|,|&#44;|&quot;)*(?:[\s<>()\]"]|$))/',
 				'markup_url',
 				$body,
 				-1,
@@ -2737,7 +2792,7 @@ function markup(&$body, $track_cites = false, $op = false) {
 			if (isset($cited_posts[$cite])) {
 				$replacement = '<a onclick="return highlightReply(\''.$cite.'\', event);" href="' .
 					$config['root'] . $board['dir'] . $config['dir']['res'] .
-					link_for(array('id' => $cite, 'thread' => $cited_posts[$cite]),false,false,false, $remove_ext=$config['remove_ext']) . '#' . $cite . '">' .
+					link_for(array('id' => $cite, 'thread' => $cited_posts[$cite]),false,false,false, $remove_ext=$config['remove_ext']) . '#' .$cite . '">' .
 					'&gt;&gt;' . $cite .
 					'</a>';
 
@@ -2763,7 +2818,7 @@ function markup(&$body, $track_cites = false, $op = false) {
 			// Carry found posts from local board >>X links
 			foreach ($cited_posts as $cite => $thread) {
 				$cited_posts[$cite] = $config['root'] . $board['dir'] . $config['dir']['res'] .
-					($thread ? $thread : $cite) . '.html#' . $cite;
+					($thread ? $thread : $cite) . '.html#' .$cite;
 			}
 
 			$cited_posts = array(
@@ -2808,7 +2863,7 @@ function markup(&$body, $track_cites = false, $op = false) {
 
 				while ($cite = $query->fetch(PDO::FETCH_ASSOC)) {
 					$cited_posts[$_board][$cite['id']] = $config['root'] . $board['dir'] . $config['dir']['res'] .
-						link_for($cite,false,false,false, $remove_ext=$config['remove_ext']) . '#' . $cite['id'];
+						link_for($cite,false,false,false, $remove_ext=$config['remove_ext']) . '#' .$cite['id'];
 				}
 			}
 
@@ -2992,10 +3047,18 @@ function buildThread($id, $return = false, $mod = false, $react_ignore = false) 
 		$query->bindValue(':id', $id, PDO::PARAM_INT);
 		$query->execute() or error(db_error($query));
 
-
-
 		while ($post = $query->fetch(PDO::FETCH_ASSOC)) {
 			if (!isset($thread)) {
+				if($config["poll_board"]){
+					$poll_query = prepare("SELECT * FROM ``poll`` WHERE `id` = :id AND `board` = :board");
+					$poll_query->bindValue(':id', $id, PDO::PARAM_INT);
+					$poll_query->bindValue(':board', $board["uri"]);
+					$poll_query->execute() or error(db_error($poll_query));
+					$poll_col = $poll_query->fetch(PDO::FETCH_ASSOC);
+					if($poll_col){
+						$post["poll_body"] = Polling::bodyAddablePoll($poll_col["questionaire_json"], intval($poll_col["mutliple_choice"]),$poll_col["created"], $poll_col["expires"]);
+					}
+				}
 				$thread = new Thread($post, $mod ? '?/' : $config['root'], $mod);
 			} else {
 				$thread->add(new Post($post, $mod ? '?/' : $config['root'], $mod));
@@ -3197,7 +3260,9 @@ function generate_tripcode($name) {
 		else
 			$trip = substr(crypt($trip, $salt), -10);
 	}
-	$trip = phoneticEncoding($trip);
+	if($config["phonetic_tripcodes"]){
+		$trip = phoneticEncoding($trip);
+	}
 
 	if($secure){
 		$trip = '!!' . $trip;
@@ -3559,6 +3624,7 @@ function link_for($post, $page50 = false, $foreignlink = false, $thread = false,
 	return sprintf($tpl, $id, $slug);
 }
 
+// this function double spaces everything and is unescicary
 function prettify_textarea($s){
 	return str_replace("\t", '&#09;', str_replace("\n", '&#13;&#10;', htmlentities($s)));
 }

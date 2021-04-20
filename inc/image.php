@@ -355,7 +355,7 @@ class ImageConvert extends ImageBase {
 			else
 				$convert_args = &$config['convert_args'];
 
-			if (($error = shell_exec_error(($this->gm ? 'gm ' : '') . 'convert ' .
+			if (($error = shell_exec_error(($this->gm ? 'gm ' : '') . 'convert ' . ' -quiet ' .
 				sprintf($convert_args,
 					$this->width,
 					$this->height,
@@ -565,7 +565,7 @@ class Post_ImageProcessing{
 		require_once 'inc/lib/webm/ffmpeg.php';
 		require_once 'inc/lib/webm/posthandler.php';
 		$file_obj->thumb_path = $board['dir'] . $config['dir']['thumb'] . $file_obj->file_id . '.png';
-		$file_obj->thumb_path = 'abc.png';
+
 		$file = set_thumbnail_dimensions((object) array('op' => $op), $file_obj);
 		$webminfo = get_webm_info($file_obj->file_path, $config['webm']['expected_format'][$file_obj->extension]);
 		make_webm_thumbnail($file_obj->file_path, $file_obj->thumb_path, $file->thumbwidth, $file->thumbheight, $webminfo);
@@ -574,7 +574,6 @@ class Post_ImageProcessing{
 
 	static public function proccess($post){
 		global $config,$board;
-
 		if ($post['has_file']) {
 		foreach ($post['files'] as $key => &$file) {
 		if ($file['is_an_image']) {
@@ -660,6 +659,16 @@ class Post_ImageProcessing{
 				}
 				$file['thumbwidth'] = $size[0];
 				$file['thumbheight'] = $size[1];
+				if(!$post['op']){
+					$ratio = 1;
+					if($file['thumbwidth'] > $config["thumb_width"]){
+						$ratio =  $config["thumb_width"] / $file['thumbwidth'];
+					} else if($file['thumbheight'] > $config["thumb_height"]){
+						$ratio =  $config["thumb_height"] / $file['thumbheight'];
+					}
+					$file['thumbwidth'] = round($file['thumbwidth'] * $ratio);
+					$file['thumbheight'] = round($file['thumbheight'] * $ratio);
+				}
 			} elseif ($config['minimum_copy_resize'] &&
 				$image->size->width <= $config['thumb_width'] &&
 				$image->size->height <= $config['thumb_height'] &&
@@ -752,9 +761,9 @@ class Post_ImageProcessing{
 					($post['mod'] ? $config['root'] . $config['file_mod'] . '?/' : $config['root']) .
 					($board['dir'] . $config['dir']['res'] .
 						($p['thread'] ?
-							$p['thread'] . '.html#' . $p['id']
+							$p['thread'] . '#' . $board['uri'] . '-'. $p['id']
 						:
-							$p['id'] . '.html'
+							$p['id']
 						))
 				));
 			}
@@ -765,9 +774,9 @@ class Post_ImageProcessing{
 					($post['mod'] ? $config['root'] . $config['file_mod'] . '?/' : $config['root']) .
 					($board['dir'] . $config['dir']['res'] .
 						($p['thread'] ?
-							$p['thread'] . '.html#' . $p['id']
+							$p['thread'] . '#' . $board['uri'] . '-'. $p['id']
 						:
-							$p['id'] . '.html'
+							$p['id']
 						))
 				));
 			}
